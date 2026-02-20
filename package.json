@@ -1,0 +1,19 @@
+{
+  "name": "aws-crud-api",
+  "version": "0.1.0",
+  "description": "Serverless CRUD API with Lambda, API Gateway, DynamoDB, and Cognito",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.700.0",
+    "@aws-sdk/lib-dynamodb": "^3.700.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^24.10.1",
+    "typescript": "~5.9.3"
+  }
+}
