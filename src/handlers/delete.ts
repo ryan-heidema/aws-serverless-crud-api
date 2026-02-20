@@ -1,37 +1,20 @@
-import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { getItem, deleteItem } from "../lib/dynamo";
+import { InvalidPathParameterError, NotFoundError } from "../lib/errors";
+import { noContent } from "../lib/http";
+import { StrictHandler, withErrorHandling } from "../lib/handler";
 
-export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  try {
-    const id = event.pathParameters?.id;
+const deleteHandler: StrictHandler = async (event) => {
+  const id = event.pathParameters?.id;
 
-    if (!id) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "id is required" }),
-      };
-    }
+  if (!id) throw new InvalidPathParameterError("id");
 
-    // Check if item exists
-    const existingItem = await getItem(id);
-    if (!existingItem) {
-      return {
-        statusCode: 404,
-        body: JSON.stringify({ error: "Item not found" }),
-      };
-    }
+  // Check if item exists
+  const existingItem = await getItem(id);
+  if (!existingItem) throw new NotFoundError("Item not found");
 
-    await deleteItem(id);
+  await deleteItem(id);
 
-    return {
-      statusCode: 204,
-      body: "",
-    };
-  } catch (error) {
-    console.error("Error deleting item:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Internal server error" }),
-    };
-  }
+  return noContent();
 };
+
+export const handler = withErrorHandling(deleteHandler);

@@ -8,10 +8,4 @@ export interface Item {
   updatedAt?: string;
 }
 
-export interface CreateItemRequest {
-  name: string;
-}
-
-export interface UpdateItemRequest {
-  name?: string;
-}
+export type { CreateItemRequest, UpdateItemRequest } from "./schemas/items";

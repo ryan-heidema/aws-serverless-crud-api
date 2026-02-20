@@ -1,38 +1,18 @@
-import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { getItem } from "../lib/dynamo";
+import { InvalidPathParameterError, NotFoundError } from "../lib/errors";
+import { HTTP_STATUS, success } from "../lib/http";
+import { StrictHandler, withErrorHandling } from "../lib/handler";
 
-export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  try {
-    const id = event.pathParameters?.id;
+const getHandler: StrictHandler = async (event) => {
+  const id = event.pathParameters?.id;
 
-    if (!id) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "id is required" }),
-      };
-    }
+  if (!id) throw new InvalidPathParameterError("id");
 
-    const item = await getItem(id);
+  const item = await getItem(id);
 
-    if (!item) {
-      return {
-        statusCode: 404,
-        body: JSON.stringify({ error: "Item not found" }),
-      };
-    }
+  if (!item) throw new NotFoundError("Item not found");
 
-    return {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(item),
-    };
-  } catch (error) {
-    console.error("Error getting item:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Internal server error" }),
-    };
-  }
+  return success(HTTP_STATUS.OK, item);
 };
+
+export const handler = withErrorHandling(getHandler);

@@ -1,40 +1,28 @@
-import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { putItem } from "../lib/dynamo";
 import { randomUUID } from "crypto";
-import { CreateItemRequest, Item } from "../types";
+import { Item } from "../types";
+import { ValidationError } from "../lib/errors";
+import { parseJsonBody } from "../lib/validation";
+import { createItemSchema } from "../schemas/items";
+import { HTTP_STATUS, success } from "../lib/http";
+import { StrictHandler, withErrorHandling } from "../lib/handler";
 
-export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  try {
-    const body = JSON.parse(event.body ?? "{}") as CreateItemRequest;
+const createHandler: StrictHandler = async (event) => {
+  const payload = parseJsonBody(event.body);
+  const validation = createItemSchema.safeParse(payload);
+  if (!validation.success) throw new ValidationError(validation.error);
 
-    if (!body.name || typeof body.name !== "string") {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "name is required and must be a string" }),
-      };
-    }
+  const now = new Date().toISOString();
+  const item: Item = {
+    id: randomUUID(),
+    name: validation.data.name,
+    createdAt: now,
+    updatedAt: now,
+  };
 
-    const item: Item = {
-      id: randomUUID(),
-      name: body.name,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+  await putItem(item);
 
-    await putItem(item);
-
-    return {
-      statusCode: 201,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(item),
-    };
-  } catch (error) {
-    console.error("Error creating item:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Internal server error" }),
-    };
-  }
+  return success(HTTP_STATUS.CREATED, item);
 };
+
+export const handler = withErrorHandling(createHandler);

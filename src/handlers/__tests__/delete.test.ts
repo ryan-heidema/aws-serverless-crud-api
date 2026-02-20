@@ -41,7 +41,9 @@ describe("delete handler", () => {
     const result: any = await handler(event, buildContext(), jest.fn());
 
     expect(result.statusCode).toBe(404);
-    expect(JSON.parse(result.body).error).toBe("Item not found");
+    const body = JSON.parse(result.body);
+    expect(body.error.code).toBe("NOT_FOUND");
+    expect(body.error.message).toBe("Item not found");
     expect(mockDeleteItem).not.toHaveBeenCalled();
   });
 
@@ -51,7 +53,9 @@ describe("delete handler", () => {
     const result: any = await handler(event, buildContext(), jest.fn());
 
     expect(result.statusCode).toBe(400);
-    expect(JSON.parse(result.body).error).toMatch(/id is required/);
+    const body = JSON.parse(result.body);
+    expect(body.error.code).toBe("INVALID_PATH_PARAMETER");
+    expect(body.error.message).toMatch(/id/);
   });
 
   it("returns 500 when DynamoDB throws", async () => {
@@ -65,6 +69,8 @@ describe("delete handler", () => {
     const result: any = await handler(event, buildContext(), jest.fn());
 
     expect(result.statusCode).toBe(500);
-    expect(JSON.parse(result.body).error).toBe("Internal server error");
+    const body = JSON.parse(result.body);
+    expect(body.error.code).toBe("INTERNAL_ERROR");
+    expect(body.error.message).toBe("Internal server error");
   });
 });

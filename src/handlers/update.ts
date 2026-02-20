@@ -1,50 +1,32 @@
-import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { getItem, updateItem } from "../lib/dynamo";
 import { UpdateItemRequest } from "../types";
+import {
+  InvalidPathParameterError,
+  NotFoundError,
+  ValidationError,
+} from "../lib/errors";
+import { parseJsonBody } from "../lib/validation";
+import { updateItemSchema } from "../schemas/items";
+import { HTTP_STATUS, success } from "../lib/http";
+import { StrictHandler, withErrorHandling } from "../lib/handler";
 
-export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  try {
-    const id = event.pathParameters?.id;
+const updateHandler: StrictHandler = async (event) => {
+  const id = event.pathParameters?.id;
 
-    if (!id) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "id is required" }),
-      };
-    }
+  if (!id) throw new InvalidPathParameterError("id");
 
-    // Check if item exists
-    const existingItem = await getItem(id);
-    if (!existingItem) {
-      return {
-        statusCode: 404,
-        body: JSON.stringify({ error: "Item not found" }),
-      };
-    }
+  // Check if item exists
+  const existingItem = await getItem(id);
+  if (!existingItem) throw new NotFoundError("Item not found");
 
-    const body = JSON.parse(event.body ?? "{}") as UpdateItemRequest;
+  const payload = parseJsonBody(event.body);
+  const validation = updateItemSchema.safeParse(payload);
+  if (!validation.success) throw new ValidationError(validation.error);
+  const body = validation.data as UpdateItemRequest;
 
-    if (body.name !== undefined && typeof body.name !== "string") {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "name must be a string" }),
-      };
-    }
+  const updatedItem = await updateItem(id, body);
 
-    const updatedItem = await updateItem(id, body);
-
-    return {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(updatedItem),
-    };
-  } catch (error) {
-    console.error("Error updating item:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Internal server error" }),
-    };
-  }
+  return success(HTTP_STATUS.OK, updatedItem);
 };
+
+export const handler = withErrorHandling(updateHandler);

@@ -86,7 +86,29 @@ describe("items integration (real AWS)", () => {
     expect(getDeletedRes.status).toBe(404);
     expect(getDeletedRes.body).toEqual(
       expect.objectContaining({
-        error: "Item not found",
+        error: expect.objectContaining({
+          code: "NOT_FOUND",
+          message: "Item not found",
+        }),
+      })
+    );
+  });
+
+  it("returns standardized validation error for invalid create request", async () => {
+    const invalidRes = await request("/items", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+    expect(invalidRes.status).toBe(400);
+    expect(invalidRes.body).toEqual(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          code: "VALIDATION_ERROR",
+          message: "Validation failed",
+          details: expect.any(Array),
+        }),
       })
     );
   });
