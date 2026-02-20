@@ -8,7 +8,8 @@
     "clean": "rm -rf dist",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest --config jest.integration.config.js --runInBand"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.700.0",
