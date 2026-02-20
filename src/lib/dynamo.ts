@@ -11,43 +11,36 @@ import { Item } from "../types";
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
-const TABLE_NAME = process.env.TABLE_NAME;
-if (!TABLE_NAME) {
-  throw new Error("TABLE_NAME environment variable is not set");
+function getTableName(): string {
+  const name = process.env.TABLE_NAME;
+  if (!name) throw new Error("TABLE_NAME environment variable is not set");
+  return name;
 }
 
-/**
- * Put an item into DynamoDB
- */
 export const putItem = async (item: Item): Promise<void> => {
   await docClient.send(
     new PutCommand({
-      TableName: TABLE_NAME,
+      TableName: getTableName(),
       Item: item,
     })
   );
 };
 
-/**
- * Get an item by ID from DynamoDB
- */
 export const getItem = async (id: string): Promise<Item | undefined> => {
   const result = await docClient.send(
     new GetCommand({
-      TableName: TABLE_NAME,
+      TableName: getTableName(),
       Key: { id },
     })
   );
   return result.Item as Item | undefined;
 };
 
-/**
- * Update an item in DynamoDB
- */
 export const updateItem = async (
   id: string,
   updates: Partial<Item>
 ): Promise<Item> => {
+  const tableName = getTableName();
   const updateExpression: string[] = [];
   const expressionAttributeNames: Record<string, string> = {};
   const expressionAttributeValues: Record<string, any> = {};
@@ -63,10 +56,13 @@ export const updateItem = async (
 
   const result = await docClient.send(
     new UpdateCommand({
-      TableName: TABLE_NAME,
+      TableName: tableName,
       Key: { id },
       UpdateExpression: `SET ${updateExpression.join(", ")}`,
-      ExpressionAttributeNames: expressionAttributeNames,
+      ExpressionAttributeNames:
+        Object.keys(expressionAttributeNames).length > 0
+          ? expressionAttributeNames
+          : undefined,
       ExpressionAttributeValues: expressionAttributeValues,
       ReturnValues: "ALL_NEW",
     })
@@ -75,13 +71,10 @@ export const updateItem = async (
   return result.Attributes as Item;
 };
 
-/**
- * Delete an item from DynamoDB
- */
 export const deleteItem = async (id: string): Promise<void> => {
   await docClient.send(
     new DeleteCommand({
-      TableName: TABLE_NAME,
+      TableName: getTableName(),
       Key: { id },
     })
   );

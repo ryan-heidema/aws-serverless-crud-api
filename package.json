@@ -3,9 +3,12 @@
   "version": "0.1.0",
   "description": "Serverless CRUD API with Lambda, API Gateway, DynamoDB, and Cognito",
   "scripts": {
-    "build": "tsc",
-    "build:watch": "tsc --watch",
-    "clean": "rm -rf dist"
+    "build": "tsc -p tsconfig.build.json",
+    "build:watch": "tsc -p tsconfig.build.json --watch",
+    "clean": "rm -rf dist",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.700.0",
@@ -13,7 +16,10 @@
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.145",
+    "@types/jest": "^30",
     "@types/node": "^24.10.1",
+    "jest": "^30",
+    "ts-jest": "^29",
     "typescript": "~5.9.3"
   }
 }
