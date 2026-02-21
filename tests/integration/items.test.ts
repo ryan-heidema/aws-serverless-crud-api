@@ -267,4 +267,43 @@ describe("items integration (real AWS + Cognito)", () => {
       })
     );
   });
+
+  it("GET /items returns only the authenticated user items", async () => {
+    const name1 = `list-a-${Date.now()}-1`;
+    const name2 = `list-a-${Date.now()}-2`;
+
+    const create1 = await request("/items", userAToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name1 }),
+    });
+    expect(create1.status).toBe(201);
+    const item1 = create1.body as Item;
+
+    const create2 = await request("/items", userAToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name2 }),
+    });
+    expect(create2.status).toBe(201);
+    const item2 = create2.body as Item;
+
+    const listRes = await request("/items", userAToken);
+    expect(listRes.status).toBe(200);
+    const listBody = listRes.body as { items: Item[] };
+    expect(Array.isArray(listBody.items)).toBe(true);
+
+    const ids = listBody.items.map((i) => i.id);
+    expect(ids).toContain(item1.id);
+    expect(ids).toContain(item2.id);
+
+    const listAsB = await request("/items", userBToken);
+    expect(listAsB.status).toBe(200);
+    const listBodyB = listAsB.body as { items: Item[] };
+    expect(listBodyB.items.map((i) => i.id)).not.toContain(item1.id);
+    expect(listBodyB.items.map((i) => i.id)).not.toContain(item2.id);
+
+    await request(`/items/${item1.id}`, userAToken, { method: "DELETE" });
+    await request(`/items/${item2.id}`, userAToken, { method: "DELETE" });
+  });
 });

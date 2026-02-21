@@ -3,6 +3,7 @@ import {
   DynamoDBDocumentClient,
   PutCommand,
   GetCommand,
+  QueryCommand,
   UpdateCommand,
   DeleteCommand,
 } from "@aws-sdk/lib-dynamodb";
@@ -37,6 +38,17 @@ export const getItem = async (
     })
   );
   return result.Item as Item | undefined;
+};
+
+export const listItemsByUserId = async (userId: string): Promise<Item[]> => {
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: getTableName(),
+      KeyConditionExpression: "userId = :userId",
+      ExpressionAttributeValues: { ":userId": userId },
+    })
+  );
+  return (result.Items ?? []) as Item[];
 };
 
 export const updateItem = async (

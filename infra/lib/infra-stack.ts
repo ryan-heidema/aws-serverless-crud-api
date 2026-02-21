@@ -46,7 +46,17 @@ export class InfraStack extends cdk.Stack {
       },
     });
 
-    // Lambda function for getting items
+    // Lambda function for listing items
+    const listFunction = new NodejsFunction(this, "ListFunction", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "handler",
+      entry: path.join(__dirname, "../../src/handlers/list.ts"),
+      environment: {
+        TABLE_NAME: table.tableName,
+      },
+    });
+
+    // Lambda function for getting a single item
     const getFunction = new NodejsFunction(this, "GetFunction", {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: "handler",
@@ -78,6 +88,7 @@ export class InfraStack extends cdk.Stack {
 
     // Grant Lambda functions access to DynamoDB table
     table.grantReadWriteData(createFunction);
+    table.grantReadData(listFunction);
     table.grantReadWriteData(getFunction);
     table.grantReadWriteData(updateFunction);
     table.grantReadWriteData(deleteFunction);
@@ -97,6 +108,16 @@ export class InfraStack extends cdk.Stack {
     );
 
     // Add routes (all protected by JWT)
+    httpApi.addRoutes({
+      path: "/items",
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: new integrations.HttpLambdaIntegration(
+        "ListIntegration",
+        listFunction
+      ),
+      authorizer: jwtAuthorizer,
+    });
+
     httpApi.addRoutes({
       path: "/items",
       methods: [apigatewayv2.HttpMethod.POST],
