@@ -22,6 +22,7 @@ describe("create handler", () => {
 
     const body = JSON.parse(result.body);
     expect(body).toEqual({
+      userId: "test-user-id",
       id: expect.any(String),
       name: "Test Item",
       createdAt: expect.any(String),
@@ -30,8 +31,27 @@ describe("create handler", () => {
 
     expect(mockPutItem).toHaveBeenCalledTimes(1);
     expect(mockPutItem).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "Test Item" })
+      expect.objectContaining({
+        userId: "test-user-id",
+        name: "Test Item",
+      })
     );
+  });
+
+  it("returns 401 when JWT has no sub", async () => {
+    const event = buildApiEvent({
+      body: JSON.stringify({ name: "Test Item" }),
+      requestContext: {
+        authorizer: { jwt: { claims: {} } },
+      },
+    } as any);
+
+    const result: any = await handler(event, buildContext(), jest.fn());
+
+    expect(result.statusCode).toBe(401);
+    const body = JSON.parse(result.body);
+    expect(body.error.code).toBe("UNAUTHORIZED");
+    expect(mockPutItem).not.toHaveBeenCalled();
   });
 
   it("returns 400 when name is missing", async () => {

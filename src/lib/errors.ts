@@ -1,6 +1,7 @@
 import { ZodError } from "zod";
 
 export type ApiErrorCode =
+  | "UNAUTHORIZED"
   | "INVALID_JSON"
   | "INVALID_PATH_PARAMETER"
   | "VALIDATION_ERROR"
@@ -21,6 +22,15 @@ export abstract class AppError extends Error {
   constructor(message: string, details?: unknown) {
     super(message);
     this.details = details;
+  }
+}
+
+export class UnauthorizedError extends AppError {
+  readonly statusCode = 401;
+  readonly code = "UNAUTHORIZED" as const;
+
+  constructor(message = "Unauthorized") {
+    super(message);
   }
 }
 

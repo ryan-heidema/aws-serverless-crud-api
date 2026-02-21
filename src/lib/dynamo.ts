@@ -26,24 +26,28 @@ export const putItem = async (item: Item): Promise<void> => {
   );
 };
 
-export const getItem = async (id: string): Promise<Item | undefined> => {
+export const getItem = async (
+  userId: string,
+  id: string
+): Promise<Item | undefined> => {
   const result = await docClient.send(
     new GetCommand({
       TableName: getTableName(),
-      Key: { id },
+      Key: { userId, id },
     })
   );
   return result.Item as Item | undefined;
 };
 
 export const updateItem = async (
+  userId: string,
   id: string,
-  updates: Partial<Item>
+  updates: Partial<Pick<Item, "name">>
 ): Promise<Item> => {
   const tableName = getTableName();
   const updateExpression: string[] = [];
   const expressionAttributeNames: Record<string, string> = {};
-  const expressionAttributeValues: Record<string, any> = {};
+  const expressionAttributeValues: Record<string, unknown> = {};
 
   if (updates.name !== undefined) {
     updateExpression.push("#name = :name");
@@ -57,7 +61,7 @@ export const updateItem = async (
   const result = await docClient.send(
     new UpdateCommand({
       TableName: tableName,
-      Key: { id },
+      Key: { userId, id },
       UpdateExpression: `SET ${updateExpression.join(", ")}`,
       ExpressionAttributeNames:
         Object.keys(expressionAttributeNames).length > 0
@@ -71,11 +75,14 @@ export const updateItem = async (
   return result.Attributes as Item;
 };
 
-export const deleteItem = async (id: string): Promise<void> => {
+export const deleteItem = async (
+  userId: string,
+  id: string
+): Promise<void> => {
   await docClient.send(
     new DeleteCommand({
       TableName: getTableName(),
-      Key: { id },
+      Key: { userId, id },
     })
   );
 };

@@ -30,7 +30,8 @@ export class InfraStack extends cdk.Stack {
 
     // DynamoDB Table
     const table = new dynamodb.Table(this, "ItemsTable", {
-      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "id", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY, // dev only
     });

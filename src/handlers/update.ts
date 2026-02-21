@@ -1,4 +1,5 @@
 import { getItem, updateItem } from "../lib/dynamo";
+import { getUserId } from "../lib/auth";
 import { UpdateItemRequest } from "../types";
 import {
   InvalidPathParameterError,
@@ -11,12 +12,13 @@ import { HTTP_STATUS, success } from "../lib/http";
 import { StrictHandler, withErrorHandling } from "../lib/handler";
 
 const updateHandler: StrictHandler = async (event) => {
+  const userId = getUserId(event);
   const id = event.pathParameters?.id;
 
   if (!id) throw new InvalidPathParameterError("id");
 
-  // Check if item exists
-  const existingItem = await getItem(id);
+  // Check if item exists for this user
+  const existingItem = await getItem(userId, id);
   if (!existingItem) throw new NotFoundError("Item not found");
 
   const payload = parseJsonBody(event.body);
@@ -24,7 +26,7 @@ const updateHandler: StrictHandler = async (event) => {
   if (!validation.success) throw new ValidationError(validation.error);
   const body = validation.data as UpdateItemRequest;
 
-  const updatedItem = await updateItem(id, body);
+  const updatedItem = await updateItem(userId, id, body);
 
   return success(HTTP_STATUS.OK, updatedItem);
 };

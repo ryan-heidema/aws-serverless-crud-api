@@ -30,7 +30,14 @@ export function buildApiEvent(
       stage: "$default",
       time: "01/Jan/2024:00:00:00 +0000",
       timeEpoch: 1704067200000,
-    },
+      authorizer: {
+        jwt: {
+          claims: {
+            sub: "test-user-id",
+          },
+        },
+      },
+    } as APIGatewayProxyEventV2["requestContext"],
     isBase64Encoded: false,
     ...overrides,
   };

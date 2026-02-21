@@ -15,17 +15,18 @@ const cognito =
     ? new CognitoIdentityProviderClient({ region })
     : null;
 
-let accessToken: string;
-
-async function authenticateTestUser(): Promise<void> {
+/** Creates a Cognito user and returns their IdToken for API requests. */
+async function createTestUserAndGetToken(
+  emailPrefix: string,
+  password: string = "Password123!"
+): Promise<string> {
   if (!cognito || !userPoolId || !clientId) {
     throw new Error(
       "COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, and AWS_REGION are required for authenticated integration tests."
     );
   }
 
-  const email = `test-${Date.now()}@example.com`;
-  const password = "Password123!";
+  const email = `${emailPrefix}-${Date.now()}@example.com`;
 
   await cognito.send(
     new AdminCreateUserCommand({
@@ -58,10 +59,11 @@ async function authenticateTestUser(): Promise<void> {
 
   const token = auth.AuthenticationResult?.IdToken;
   if (!token) throw new Error("Failed to obtain IdToken from Cognito");
-  accessToken = token;
+  return token;
 }
 
 type Item = {
+  userId?: string;
   id: string;
   name: string;
   createdAt?: string;
@@ -78,16 +80,15 @@ type JsonValue =
 
 async function request(
   path: string,
+  token: string,
   init?: RequestInit
 ): Promise<{ status: number; body: JsonValue | null }> {
   if (!API_URL) throw new Error("API_URL is required for integration tests.");
 
   const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
     ...(init?.headers as Record<string, string> | undefined),
   };
-  if (accessToken) {
-    headers["Authorization"] = `Bearer ${accessToken}`;
-  }
 
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
@@ -108,15 +109,18 @@ async function request(
 }
 
 describe("items integration (real AWS + Cognito)", () => {
+  let userAToken: string;
+  let userBToken: string;
   let createdItemId: string | undefined;
 
   beforeAll(async () => {
-    await authenticateTestUser();
+    userAToken = await createTestUserAndGetToken("userA");
+    userBToken = await createTestUserAndGetToken("userB");
   });
 
   afterAll(async () => {
     if (!createdItemId) return;
-    await request(`/items/${createdItemId}`, { method: "DELETE" });
+    await request(`/items/${createdItemId}`, userAToken, { method: "DELETE" });
   });
 
   it("rejects unauthenticated request", async () => {
@@ -142,10 +146,10 @@ describe("items integration (real AWS + Cognito)", () => {
     expect(response.status).toBe(401);
   });
 
-  it("runs full CRUD flow against deployed API", async () => {
+  it("runs full CRUD flow against deployed API (user A)", async () => {
     const createName = `integration-${Date.now()}`;
 
-    const createRes = await request("/items", {
+    const createRes = await request("/items", userAToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: createName }),
@@ -162,7 +166,7 @@ describe("items integration (real AWS + Cognito)", () => {
     const created = createRes.body as Item;
     createdItemId = created.id;
 
-    const getRes = await request(`/items/${created.id}`);
+    const getRes = await request(`/items/${created.id}`, userAToken);
     expect(getRes.status).toBe(200);
     expect(getRes.body).toEqual(
       expect.objectContaining({
@@ -172,7 +176,7 @@ describe("items integration (real AWS + Cognito)", () => {
     );
 
     const updatedName = `${createName}-updated`;
-    const updateRes = await request(`/items/${created.id}`, {
+    const updateRes = await request(`/items/${created.id}`, userAToken, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: updatedName }),
@@ -186,13 +190,13 @@ describe("items integration (real AWS + Cognito)", () => {
       })
     );
 
-    const deleteRes = await request(`/items/${created.id}`, {
+    const deleteRes = await request(`/items/${created.id}`, userAToken, {
       method: "DELETE",
     });
     expect(deleteRes.status).toBe(204);
     createdItemId = undefined;
 
-    const getDeletedRes = await request(`/items/${created.id}`);
+    const getDeletedRes = await request(`/items/${created.id}`, userAToken);
     expect(getDeletedRes.status).toBe(404);
     expect(getDeletedRes.body).toEqual(
       expect.objectContaining({
@@ -204,8 +208,49 @@ describe("items integration (real AWS + Cognito)", () => {
     );
   });
 
+  it("isolation: user B cannot access user A item (GET/PUT/DELETE return 404)", async () => {
+    const createName = `isolation-${Date.now()}`;
+    const createRes = await request("/items", userAToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: createName }),
+    });
+    expect(createRes.status).toBe(201);
+    const created = createRes.body as Item;
+    const itemId = created.id;
+
+    const getAsB = await request(`/items/${itemId}`, userBToken);
+    expect(getAsB.status).toBe(404);
+    expect(getAsB.body).toEqual(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          code: "NOT_FOUND",
+          message: "Item not found",
+        }),
+      })
+    );
+
+    const updateAsB = await request(`/items/${itemId}`, userBToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "hacked" }),
+    });
+    expect(updateAsB.status).toBe(404);
+
+    const deleteAsB = await request(`/items/${itemId}`, userBToken, {
+      method: "DELETE",
+    });
+    expect(deleteAsB.status).toBe(404);
+
+    const getAsA = await request(`/items/${itemId}`, userAToken);
+    expect(getAsA.status).toBe(200);
+    expect((getAsA.body as Item).name).toBe(createName);
+
+    await request(`/items/${itemId}`, userAToken, { method: "DELETE" });
+  });
+
   it("returns standardized validation error for invalid create request", async () => {
-    const invalidRes = await request("/items", {
+    const invalidRes = await request("/items", userAToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),

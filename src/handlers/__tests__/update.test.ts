@@ -9,6 +9,7 @@ const mockGetItem = jest.mocked(getItem);
 const mockUpdateItem = jest.mocked(updateItem);
 
 const EXISTING_ITEM: Item = {
+  userId: "test-user-id",
   id: "abc-123",
   name: "Old Name",
   createdAt: "2024-01-01T00:00:00.000Z",
@@ -34,7 +35,9 @@ describe("update handler", () => {
 
     expect(result.statusCode).toBe(200);
     expect(JSON.parse(result.body)).toEqual(updatedItem);
-    expect(mockUpdateItem).toHaveBeenCalledWith("abc-123", { name: "New Name" });
+        expect(mockUpdateItem).toHaveBeenCalledWith("test-user-id", "abc-123", {
+      name: "New Name",
+    });
   });
 
   it("returns 404 when item does not exist", async () => {

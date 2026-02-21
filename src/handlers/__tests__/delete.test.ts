@@ -9,6 +9,7 @@ const mockGetItem = jest.mocked(getItem);
 const mockDeleteItem = jest.mocked(deleteItem);
 
 const EXISTING_ITEM: Item = {
+  userId: "test-user-id",
   id: "abc-123",
   name: "Test Item",
   createdAt: "2024-01-01T00:00:00.000Z",
@@ -28,7 +29,7 @@ describe("delete handler", () => {
 
     expect(result.statusCode).toBe(204);
     expect(result.body).toBe("");
-    expect(mockDeleteItem).toHaveBeenCalledWith("abc-123");
+    expect(mockDeleteItem).toHaveBeenCalledWith("test-user-id", "abc-123");
   });
 
   it("returns 404 when item does not exist", async () => {

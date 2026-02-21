@@ -8,6 +8,7 @@ jest.mock("../../lib/dynamo");
 const mockGetItem = jest.mocked(getItem);
 
 const TEST_ITEM: Item = {
+  userId: "test-user-id",
   id: "abc-123",
   name: "Test Item",
   createdAt: "2024-01-01T00:00:00.000Z",
@@ -26,7 +27,7 @@ describe("get handler", () => {
 
     expect(result.statusCode).toBe(200);
     expect(JSON.parse(result.body)).toEqual(TEST_ITEM);
-    expect(mockGetItem).toHaveBeenCalledWith("abc-123");
+    expect(mockGetItem).toHaveBeenCalledWith("test-user-id", "abc-123");
   });
 
   it("returns 404 when item does not exist", async () => {

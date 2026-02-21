@@ -2,6 +2,7 @@
  * Simple Item type for CRUD API
  */
 export interface Item {
+  userId: string;
   id: string;
   name: string;
   createdAt?: string;
