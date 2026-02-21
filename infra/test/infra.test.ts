@@ -8,6 +8,7 @@ describe("InfraStack", () => {
   beforeAll(() => {
     const app = new cdk.App();
     const stack = new InfraStack(app, "TestStack", {
+      envName: "dev",
       env: {
         account: "123456789012",
         region: "us-east-1",
@@ -16,26 +17,23 @@ describe("InfraStack", () => {
     template = Template.fromStack(stack);
   });
 
-  it("creates a DynamoDB table", () => {
+  it("creates a DynamoDB table with env prefix", () => {
     template.hasResourceProperties("AWS::DynamoDB::Table", {
       BillingMode: "PAY_PER_REQUEST",
+      TableName: "dev-items",
       KeySchema: [
-        {
-          AttributeName: "id",
-          KeyType: "HASH",
-        },
+        { AttributeName: "userId", KeyType: "HASH" },
+        { AttributeName: "id", KeyType: "RANGE" },
       ],
       AttributeDefinitions: [
-        {
-          AttributeName: "id",
-          AttributeType: "S",
-        },
+        { AttributeName: "userId", AttributeType: "S" },
+        { AttributeName: "id", AttributeType: "S" },
       ],
     });
   });
 
-  it("creates four Lambda functions", () => {
-    template.resourceCountIs("AWS::Lambda::Function", 4);
+  it("creates five Lambda functions", () => {
+    template.resourceCountIs("AWS::Lambda::Function", 5);
 
     // Check that all functions have the TABLE_NAME environment variable and correct runtime
     template.hasResourceProperties("AWS::Lambda::Function", {
@@ -50,15 +48,18 @@ describe("InfraStack", () => {
     });
   });
 
-  it("creates an API Gateway HTTP API", () => {
+  it("creates an API Gateway HTTP API with env prefix", () => {
     template.hasResourceProperties("AWS::ApiGatewayV2::Api", {
       ProtocolType: "HTTP",
-      Description: "CRUD API for Items",
+      Name: "dev-items-api",
+      Description: "CRUD API for Items (dev)",
     });
   });
 
   it("creates API routes for all CRUD operations", () => {
-    // Check for POST /items
+    template.hasResourceProperties("AWS::ApiGatewayV2::Route", {
+      RouteKey: "GET /items",
+    });
     template.hasResourceProperties("AWS::ApiGatewayV2::Route", {
       RouteKey: "POST /items",
     });
@@ -80,8 +81,7 @@ describe("InfraStack", () => {
   });
 
   it("grants Lambda functions access to DynamoDB table", () => {
-    // Each Lambda function should have a policy allowing DynamoDB access
-    template.resourceCountIs("AWS::IAM::Policy", 4);
+    template.resourceCountIs("AWS::IAM::Policy", 5);
 
     // Verify at least one policy has DynamoDB permissions
     const policies = template.findResources("AWS::IAM::Policy");
@@ -101,8 +101,11 @@ describe("InfraStack", () => {
     expect(hasDynamoAccess).toBe(true);
   });
 
-  it("creates Cognito User Pool and App Client", () => {
+  it("creates Cognito User Pool and App Client with env prefix", () => {
     template.resourceCountIs("AWS::Cognito::UserPool", 1);
+    template.hasResourceProperties("AWS::Cognito::UserPool", {
+      UserPoolName: "dev-items-user-pool",
+    });
     template.resourceCountIs("AWS::Cognito::UserPoolClient", 1);
   });
 
@@ -112,21 +115,22 @@ describe("InfraStack", () => {
     });
   });
 
-  it("outputs API URL, table name, and Cognito IDs", () => {
+  it("outputs API URL, table name, and Cognito IDs with env export names", () => {
     template.hasOutput("ApiUrl", {
-      Description: "HTTP API endpoint URL",
+      Description: "HTTP API endpoint URL (dev)",
+      Export: { Name: "dev-ApiUrl" },
     });
-
     template.hasOutput("TableName", {
-      Description: "DynamoDB table name",
+      Description: "DynamoDB table name (dev)",
+      Export: { Name: "dev-TableName" },
     });
-
     template.hasOutput("UserPoolId", {
-      Description: "Cognito User Pool ID",
+      Description: "Cognito User Pool ID (dev)",
+      Export: { Name: "dev-UserPoolId" },
     });
-
     template.hasOutput("UserPoolClientId", {
-      Description: "Cognito App Client ID",
+      Description: "Cognito App Client ID (dev)",
+      Export: { Name: "dev-UserPoolClientId" },
     });
   });
 });
