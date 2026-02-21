@@ -1,5 +1,7 @@
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
+import * as cognito from "aws-cdk-lib/aws-cognito";
+import * as authorizers from "aws-cdk-lib/aws-apigatewayv2-authorizers";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
@@ -11,11 +13,26 @@ export class InfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    // Cognito User Pool
+    const userPool = new cognito.UserPool(this, "UserPool", {
+      selfSignUpEnabled: false,
+      signInAliases: { email: true },
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // dev only
+    });
+
+    const userPoolClient = new cognito.UserPoolClient(this, "UserPoolClient", {
+      userPool,
+      generateSecret: false,
+      authFlows: {
+        userPassword: true,
+      },
+    });
+
     // DynamoDB Table
     const table = new dynamodb.Table(this, "ItemsTable", {
       partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY, // For dev - change to RETAIN for prod
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // dev only
     });
 
     // Lambda function for creating items
@@ -69,7 +86,16 @@ export class InfraStack extends cdk.Stack {
       description: "CRUD API for Items",
     });
 
-    // Add routes
+    const issuerUrl = `https://cognito-idp.${this.region}.amazonaws.com/${userPool.userPoolId}`;
+    const jwtAuthorizer = new authorizers.HttpJwtAuthorizer(
+      "JwtAuthorizer",
+      issuerUrl,
+      {
+        jwtAudience: [userPoolClient.userPoolClientId],
+      }
+    );
+
+    // Add routes (all protected by JWT)
     httpApi.addRoutes({
       path: "/items",
       methods: [apigatewayv2.HttpMethod.POST],
@@ -77,6 +103,7 @@ export class InfraStack extends cdk.Stack {
         "CreateIntegration",
         createFunction
       ),
+      authorizer: jwtAuthorizer,
     });
 
     httpApi.addRoutes({
@@ -86,6 +113,7 @@ export class InfraStack extends cdk.Stack {
         "GetIntegration",
         getFunction
       ),
+      authorizer: jwtAuthorizer,
     });
 
     httpApi.addRoutes({
@@ -95,6 +123,7 @@ export class InfraStack extends cdk.Stack {
         "UpdateIntegration",
         updateFunction
       ),
+      authorizer: jwtAuthorizer,
     });
 
     httpApi.addRoutes({
@@ -104,6 +133,7 @@ export class InfraStack extends cdk.Stack {
         "DeleteIntegration",
         deleteFunction
       ),
+      authorizer: jwtAuthorizer,
     });
 
     // Outputs
@@ -115,6 +145,16 @@ export class InfraStack extends cdk.Stack {
     new cdk.CfnOutput(this, "TableName", {
       value: table.tableName,
       description: "DynamoDB table name",
+    });
+
+    new cdk.CfnOutput(this, "UserPoolId", {
+      value: userPool.userPoolId,
+      description: "Cognito User Pool ID",
+    });
+
+    new cdk.CfnOutput(this, "UserPoolClientId", {
+      value: userPoolClient.userPoolClientId,
+      description: "Cognito App Client ID",
     });
   }
 }

@@ -3,13 +3,11 @@ import * as cdk from "aws-cdk-lib";
 import { InfraStack } from "../lib/infra-stack";
 
 describe("InfraStack", () => {
-  let app: cdk.App;
-  let stack: InfraStack;
   let template: Template;
 
-  beforeEach(() => {
-    app = new cdk.App();
-    stack = new InfraStack(app, "TestStack", {
+  beforeAll(() => {
+    const app = new cdk.App();
+    const stack = new InfraStack(app, "TestStack", {
       env: {
         account: "123456789012",
         region: "us-east-1",
@@ -103,13 +101,32 @@ describe("InfraStack", () => {
     expect(hasDynamoAccess).toBe(true);
   });
 
-  it("outputs API URL and table name", () => {
+  it("creates Cognito User Pool and App Client", () => {
+    template.resourceCountIs("AWS::Cognito::UserPool", 1);
+    template.resourceCountIs("AWS::Cognito::UserPoolClient", 1);
+  });
+
+  it("creates JWT authorizer for HTTP API", () => {
+    template.hasResourceProperties("AWS::ApiGatewayV2::Authorizer", {
+      AuthorizerType: "JWT",
+    });
+  });
+
+  it("outputs API URL, table name, and Cognito IDs", () => {
     template.hasOutput("ApiUrl", {
       Description: "HTTP API endpoint URL",
     });
 
     template.hasOutput("TableName", {
       Description: "DynamoDB table name",
+    });
+
+    template.hasOutput("UserPoolId", {
+      Description: "Cognito User Pool ID",
+    });
+
+    template.hasOutput("UserPoolClientId", {
+      Description: "Cognito App Client ID",
     });
   });
 });

@@ -1,4 +1,65 @@
+import {
+  CognitoIdentityProviderClient,
+  AdminCreateUserCommand,
+  AdminSetUserPasswordCommand,
+  InitiateAuthCommand,
+} from "@aws-sdk/client-cognito-identity-provider";
+
 const API_URL = process.env.API_URL;
+const region = process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION;
+const userPoolId = process.env.COGNITO_USER_POOL_ID;
+const clientId = process.env.COGNITO_CLIENT_ID;
+
+const cognito =
+  region && userPoolId && clientId
+    ? new CognitoIdentityProviderClient({ region })
+    : null;
+
+let accessToken: string;
+
+async function authenticateTestUser(): Promise<void> {
+  if (!cognito || !userPoolId || !clientId) {
+    throw new Error(
+      "COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, and AWS_REGION are required for authenticated integration tests."
+    );
+  }
+
+  const email = `test-${Date.now()}@example.com`;
+  const password = "Password123!";
+
+  await cognito.send(
+    new AdminCreateUserCommand({
+      UserPoolId: userPoolId,
+      Username: email,
+      TemporaryPassword: password,
+      MessageAction: "SUPPRESS",
+    })
+  );
+
+  await cognito.send(
+    new AdminSetUserPasswordCommand({
+      UserPoolId: userPoolId,
+      Username: email,
+      Password: password,
+      Permanent: true,
+    })
+  );
+
+  const auth = await cognito.send(
+    new InitiateAuthCommand({
+      AuthFlow: "USER_PASSWORD_AUTH",
+      ClientId: clientId,
+      AuthParameters: {
+        USERNAME: email,
+        PASSWORD: password,
+      },
+    })
+  );
+
+  const token = auth.AuthenticationResult?.IdToken;
+  if (!token) throw new Error("Failed to obtain IdToken from Cognito");
+  accessToken = token;
+}
 
 type Item = {
   id: string;
@@ -7,12 +68,32 @@ type Item = {
   updatedAt?: string;
 };
 
-type JsonValue = Record<string, unknown> | unknown[] | string | number | boolean | null;
+type JsonValue =
+  | Record<string, unknown>
+  | unknown[]
+  | string
+  | number
+  | boolean
+  | null;
 
-async function request(path: string, init?: RequestInit): Promise<{ status: number; body: JsonValue | null }> {
+async function request(
+  path: string,
+  init?: RequestInit
+): Promise<{ status: number; body: JsonValue | null }> {
   if (!API_URL) throw new Error("API_URL is required for integration tests.");
 
-  const response = await fetch(`${API_URL}${path}`, init);
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  const response = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers,
+  });
+
   const text = await response.text();
 
   if (!text) {
@@ -22,16 +103,43 @@ async function request(path: string, init?: RequestInit): Promise<{ status: numb
   try {
     return { status: response.status, body: JSON.parse(text) as JsonValue };
   } catch {
-    return { status: response.status, body: text };
+    return { status: response.status, body: text as JsonValue };
   }
 }
 
-describe("items integration (real AWS)", () => {
+describe("items integration (real AWS + Cognito)", () => {
   let createdItemId: string | undefined;
+
+  beforeAll(async () => {
+    await authenticateTestUser();
+  });
 
   afterAll(async () => {
     if (!createdItemId) return;
     await request(`/items/${createdItemId}`, { method: "DELETE" });
+  });
+
+  it("rejects unauthenticated request", async () => {
+    if (!API_URL) throw new Error("API_URL is required.");
+    const response = await fetch(`${API_URL}/items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "test" }),
+    });
+    expect(response.status).toBe(401);
+  });
+
+  it("rejects invalid token", async () => {
+    if (!API_URL) throw new Error("API_URL is required.");
+    const response = await fetch(`${API_URL}/items`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer invalid",
+      },
+      body: JSON.stringify({ name: "test" }),
+    });
+    expect(response.status).toBe(401);
   });
 
   it("runs full CRUD flow against deployed API", async () => {
@@ -78,7 +186,9 @@ describe("items integration (real AWS)", () => {
       })
     );
 
-    const deleteRes = await request(`/items/${created.id}`, { method: "DELETE" });
+    const deleteRes = await request(`/items/${created.id}`, {
+      method: "DELETE",
+    });
     expect(deleteRes.status).toBe(204);
     createdItemId = undefined;
 

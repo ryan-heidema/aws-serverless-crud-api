@@ -11,6 +11,7 @@ infra/.cdk.staging/
 # Environment
 .env
 .env.local
+.env.integration
 
 # IDE
 .vscode/
