@@ -1,20 +1,21 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
+  DeleteCommand,
   DynamoDBDocumentClient,
-  PutCommand,
   GetCommand,
+  PutCommand,
   QueryCommand,
   UpdateCommand,
-  DeleteCommand,
-} from "@aws-sdk/lib-dynamodb";
-import { Item } from "../types";
+} from '@aws-sdk/lib-dynamodb';
+
+import { Item } from '../types';
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
 function getTableName(): string {
   const name = process.env.TABLE_NAME;
-  if (!name) throw new Error("TABLE_NAME environment variable is not set");
+  if (!name) throw new Error('TABLE_NAME environment variable is not set');
   return name;
 }
 
@@ -27,10 +28,7 @@ export const putItem = async (item: Item): Promise<void> => {
   );
 };
 
-export const getItem = async (
-  userId: string,
-  id: string
-): Promise<Item | undefined> => {
+export const getItem = async (userId: string, id: string): Promise<Item | undefined> => {
   const result = await docClient.send(
     new GetCommand({
       TableName: getTableName(),
@@ -44,8 +42,8 @@ export const listItemsByUserId = async (userId: string): Promise<Item[]> => {
   const result = await docClient.send(
     new QueryCommand({
       TableName: getTableName(),
-      KeyConditionExpression: "userId = :userId",
-      ExpressionAttributeValues: { ":userId": userId },
+      KeyConditionExpression: 'userId = :userId',
+      ExpressionAttributeValues: { ':userId': userId },
     })
   );
   return (result.Items ?? []) as Item[];
@@ -54,7 +52,7 @@ export const listItemsByUserId = async (userId: string): Promise<Item[]> => {
 export const updateItem = async (
   userId: string,
   id: string,
-  updates: Partial<Pick<Item, "name">>
+  updates: Partial<Pick<Item, 'name'>>
 ): Promise<Item> => {
   const tableName = getTableName();
   const updateExpression: string[] = [];
@@ -62,35 +60,30 @@ export const updateItem = async (
   const expressionAttributeValues: Record<string, unknown> = {};
 
   if (updates.name !== undefined) {
-    updateExpression.push("#name = :name");
-    expressionAttributeNames["#name"] = "name";
-    expressionAttributeValues[":name"] = updates.name;
+    updateExpression.push('#name = :name');
+    expressionAttributeNames['#name'] = 'name';
+    expressionAttributeValues[':name'] = updates.name;
   }
 
-  updateExpression.push("updatedAt = :updatedAt");
-  expressionAttributeValues[":updatedAt"] = new Date().toISOString();
+  updateExpression.push('updatedAt = :updatedAt');
+  expressionAttributeValues[':updatedAt'] = new Date().toISOString();
 
   const result = await docClient.send(
     new UpdateCommand({
       TableName: tableName,
       Key: { userId, id },
-      UpdateExpression: `SET ${updateExpression.join(", ")}`,
+      UpdateExpression: `SET ${updateExpression.join(', ')}`,
       ExpressionAttributeNames:
-        Object.keys(expressionAttributeNames).length > 0
-          ? expressionAttributeNames
-          : undefined,
+        Object.keys(expressionAttributeNames).length > 0 ? expressionAttributeNames : undefined,
       ExpressionAttributeValues: expressionAttributeValues,
-      ReturnValues: "ALL_NEW",
+      ReturnValues: 'ALL_NEW',
     })
   );
 
   return result.Attributes as Item;
 };
 
-export const deleteItem = async (
-  userId: string,
-  id: string
-): Promise<void> => {
+export const deleteItem = async (userId: string, id: string): Promise<void> => {
   await docClient.send(
     new DeleteCommand({
       TableName: getTableName(),

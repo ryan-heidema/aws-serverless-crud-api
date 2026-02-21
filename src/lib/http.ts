@@ -1,7 +1,8 @@
-import { APIGatewayProxyStructuredResultV2 } from "aws-lambda";
-import { AppError } from "./errors";
+import { APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 
-const JSON_HEADERS = { "Content-Type": "application/json" };
+import { AppError } from './errors';
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 /**
  * Readable HTTP status constants for use across handlers
@@ -12,10 +13,7 @@ export const HTTP_STATUS = {
   NO_CONTENT: 204,
 } as const;
 
-export function success(
-  statusCode: number,
-  body: unknown
-): APIGatewayProxyStructuredResultV2 {
+export function success(statusCode: number, body: unknown): APIGatewayProxyStructuredResultV2 {
   return {
     statusCode,
     headers: JSON_HEADERS,
@@ -26,7 +24,7 @@ export function success(
 export function noContent(): APIGatewayProxyStructuredResultV2 {
   return {
     statusCode: HTTP_STATUS.NO_CONTENT,
-    body: "",
+    body: '',
   };
 }
 
@@ -43,4 +41,3 @@ export function errorResponse(error: AppError): APIGatewayProxyStructuredResultV
     }),
   };
 }
-

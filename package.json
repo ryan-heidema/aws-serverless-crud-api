@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "description": "Serverless CRUD API with Lambda, API Gateway, DynamoDB, and Cognito",
   "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "build": "tsc -p tsconfig.build.json",
     "build:watch": "tsc -p tsconfig.build.json --watch",
     "clean": "rm -rf dist",
@@ -21,8 +23,19 @@
     "@types/aws-lambda": "^8.10.145",
     "@types/jest": "^30",
     "@types/node": "^24.10.1",
+    "@typescript-eslint/eslint-plugin": "^8.56.0",
+    "@typescript-eslint/parser": "^8.56.0",
     "dotenv": "^17.3.1",
+    "eslint": "^9.39.3",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jest": "^29.15.0",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-security": "^4.0.0",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-unicorn": "^63.0.0",
     "jest": "^30",
+    "jiti": "^2.6.1",
     "ts-jest": "^29",
     "typescript": "~5.9.3"
   }

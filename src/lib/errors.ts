@@ -1,12 +1,12 @@
-import { ZodError } from "zod";
+import { ZodError } from 'zod';
 
 export type ApiErrorCode =
-  | "UNAUTHORIZED"
-  | "INVALID_JSON"
-  | "INVALID_PATH_PARAMETER"
-  | "VALIDATION_ERROR"
-  | "NOT_FOUND"
-  | "INTERNAL_ERROR";
+  | 'UNAUTHORIZED'
+  | 'INVALID_JSON'
+  | 'INVALID_PATH_PARAMETER'
+  | 'VALIDATION_ERROR'
+  | 'NOT_FOUND'
+  | 'INTERNAL_ERROR';
 
 export type ErrorDetail = {
   path: string;
@@ -27,25 +27,25 @@ export abstract class AppError extends Error {
 
 export class UnauthorizedError extends AppError {
   readonly statusCode = 401;
-  readonly code = "UNAUTHORIZED" as const;
+  readonly code = 'UNAUTHORIZED' as const;
 
-  constructor(message = "Unauthorized") {
+  constructor(message = 'Unauthorized') {
     super(message);
   }
 }
 
 export class InvalidJsonError extends AppError {
   readonly statusCode = 400;
-  readonly code = "INVALID_JSON" as const;
+  readonly code = 'INVALID_JSON' as const;
 
-  constructor(message = "Request body must be valid JSON") {
+  constructor(message = 'Request body must be valid JSON') {
     super(message);
   }
 }
 
 export class InvalidPathParameterError extends AppError {
   readonly statusCode = 400;
-  readonly code = "INVALID_PATH_PARAMETER" as const;
+  readonly code = 'INVALID_PATH_PARAMETER' as const;
 
   constructor(paramName: string) {
     super(`Path parameter '${paramName}' is required`);
@@ -54,32 +54,32 @@ export class InvalidPathParameterError extends AppError {
 
 export class NotFoundError extends AppError {
   readonly statusCode = 404;
-  readonly code = "NOT_FOUND" as const;
+  readonly code = 'NOT_FOUND' as const;
 
-  constructor(message = "Item not found") {
+  constructor(message = 'Item not found') {
     super(message);
   }
 }
 
 export class ValidationError extends AppError {
   readonly statusCode = 400;
-  readonly code = "VALIDATION_ERROR" as const;
+  readonly code = 'VALIDATION_ERROR' as const;
 
   constructor(error: ZodError) {
-    const details: ErrorDetail[] = error.issues.map((issue) => ({
-      path: issue.path.join("."),
+    const details: ErrorDetail[] = error.issues.map(issue => ({
+      path: issue.path.join('.'),
       message: issue.message,
       code: issue.code,
     }));
-    super("Validation failed", details);
+    super('Validation failed', details);
   }
 }
 
 export class InternalServerError extends AppError {
   readonly statusCode = 500;
-  readonly code = "INTERNAL_ERROR" as const;
+  readonly code = 'INTERNAL_ERROR' as const;
 
-  constructor(message = "Internal server error") {
+  constructor(message = 'Internal server error') {
     super(message);
   }
 }

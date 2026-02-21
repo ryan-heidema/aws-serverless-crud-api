@@ -9,4 +9,4 @@ export interface Item {
   updatedAt?: string;
 }
 
-export type { CreateItemRequest, UpdateItemRequest } from "./schemas/items";
+export type { CreateItemRequest, UpdateItemRequest } from './schemas/items';
