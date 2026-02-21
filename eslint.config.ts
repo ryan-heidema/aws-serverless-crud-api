@@ -16,6 +16,7 @@ export default [
       '**/coverage/**',
       '**/cdk.out/**',
       '**/build/**',
+      'infra/**/*.js',
       'eslint.config.ts',
       '**/*.d.ts',
     ],

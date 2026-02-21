@@ -33,7 +33,10 @@ describe('list handler', () => {
     const result: any = await handler(event, buildContext(), jest.fn());
 
     expect(result.statusCode).toBe(200);
-    expect(JSON.parse(result.body)).toEqual({ items: TEST_ITEMS });
+    const body = JSON.parse(result.body);
+    expect(body.success).toBe(true);
+    expect(body.statusCode).toBe(200);
+    expect(body.data).toEqual({ items: TEST_ITEMS });
     expect(mockListItemsByUserId).toHaveBeenCalledWith('test-user-id');
   });
 
@@ -45,7 +48,9 @@ describe('list handler', () => {
     const result: any = await handler(event, buildContext(), jest.fn());
 
     expect(result.statusCode).toBe(200);
-    expect(JSON.parse(result.body)).toEqual({ items: [] });
+    const body = JSON.parse(result.body);
+    expect(body.success).toBe(true);
+    expect(body.data).toEqual({ items: [] });
   });
 
   it('returns 401 when JWT has no sub', async () => {
@@ -59,6 +64,7 @@ describe('list handler', () => {
 
     expect(result.statusCode).toBe(401);
     const body = JSON.parse(result.body);
+    expect(body.success).toBe(false);
     expect(body.error.code).toBe('UNAUTHORIZED');
     expect(mockListItemsByUserId).not.toHaveBeenCalled();
   });
@@ -72,6 +78,7 @@ describe('list handler', () => {
 
     expect(result.statusCode).toBe(500);
     const body = JSON.parse(result.body);
+    expect(body.success).toBe(false);
     expect(body.error.code).toBe('INTERNAL_ERROR');
   });
 });

@@ -21,12 +21,13 @@ export function withErrorHandling(handler: StrictHandler): APIGatewayProxyHandle
     try {
       return await handler(event, context);
     } catch (err) {
+      const requestId = event.requestContext?.requestId;
       if (err instanceof AppError) {
-        return errorResponse(err);
+        return errorResponse(err, requestId);
       }
 
       console.error('Unhandled error:', err);
-      return errorResponse(new InternalServerError());
+      return errorResponse(new InternalServerError(), requestId);
     }
   };
 }

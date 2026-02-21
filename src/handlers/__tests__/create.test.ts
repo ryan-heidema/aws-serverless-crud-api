@@ -21,7 +21,9 @@ describe('create handler', () => {
     expect(result.statusCode).toBe(201);
 
     const body = JSON.parse(result.body);
-    expect(body).toEqual({
+    expect(body.success).toBe(true);
+    expect(body.statusCode).toBe(201);
+    expect(body.data).toEqual({
       userId: 'test-user-id',
       id: expect.any(String),
       name: 'Test Item',
@@ -50,6 +52,7 @@ describe('create handler', () => {
 
     expect(result.statusCode).toBe(401);
     const body = JSON.parse(result.body);
+    expect(body.success).toBe(false);
     expect(body.error.code).toBe('UNAUTHORIZED');
     expect(mockPutItem).not.toHaveBeenCalled();
   });
@@ -61,6 +64,7 @@ describe('create handler', () => {
 
     expect(result.statusCode).toBe(400);
     const body = JSON.parse(result.body);
+    expect(body.success).toBe(false);
     expect(body.error.code).toBe('VALIDATION_ERROR');
     expect(body.error.message).toBe('Validation failed');
     expect(mockPutItem).not.toHaveBeenCalled();
@@ -75,6 +79,7 @@ describe('create handler', () => {
 
     expect(result.statusCode).toBe(400);
     const body = JSON.parse(result.body);
+    expect(body.success).toBe(false);
     expect(body.error.code).toBe('VALIDATION_ERROR');
     expect(mockPutItem).not.toHaveBeenCalled();
   });
@@ -86,6 +91,7 @@ describe('create handler', () => {
 
     expect(result.statusCode).toBe(400);
     const body = JSON.parse(result.body);
+    expect(body.success).toBe(false);
     expect(body.error.code).toBe('VALIDATION_ERROR');
     expect(mockPutItem).not.toHaveBeenCalled();
   });
@@ -101,6 +107,7 @@ describe('create handler', () => {
 
     expect(result.statusCode).toBe(500);
     const body = JSON.parse(result.body);
+    expect(body.success).toBe(false);
     expect(body.error.code).toBe('INTERNAL_ERROR');
     expect(body.error.message).toBe('Internal server error');
   });

@@ -68,6 +68,15 @@ type Item = {
   updatedAt?: string;
 };
 
+// API response envelope (success and error)
+type ApiSuccess<T> = { success: true; statusCode: number; data: T };
+type ApiError = {
+  success: false;
+  statusCode: number;
+  error: { code: string; message: string; details?: unknown };
+  requestId?: string;
+};
+
 type JsonValue = Record<string, unknown> | unknown[] | string | number | boolean | null;
 
 async function request(
@@ -148,19 +157,23 @@ describe('items integration (real AWS + Cognito)', () => {
     });
 
     expect(createRes.status).toBe(201);
-    expect(createRes.body).toEqual(
+    const createBody = createRes.body as ApiSuccess<Item>;
+    expect(createBody.success).toBe(true);
+    expect(createBody.data).toEqual(
       expect.objectContaining({
         id: expect.any(String),
         name: createName,
       })
     );
 
-    const created = createRes.body as Item;
+    const created = createBody.data;
     createdItemId = created.id;
 
     const getRes = await request(`/items/${created.id}`, userAToken);
     expect(getRes.status).toBe(200);
-    expect(getRes.body).toEqual(
+    const getBody = getRes.body as ApiSuccess<Item>;
+    expect(getBody.success).toBe(true);
+    expect(getBody.data).toEqual(
       expect.objectContaining({
         id: created.id,
         name: createName,
@@ -175,7 +188,9 @@ describe('items integration (real AWS + Cognito)', () => {
     });
 
     expect(updateRes.status).toBe(200);
-    expect(updateRes.body).toEqual(
+    const updateBody = updateRes.body as ApiSuccess<Item>;
+    expect(updateBody.success).toBe(true);
+    expect(updateBody.data).toEqual(
       expect.objectContaining({
         id: created.id,
         name: updatedName,
@@ -190,12 +205,12 @@ describe('items integration (real AWS + Cognito)', () => {
 
     const getDeletedRes = await request(`/items/${created.id}`, userAToken);
     expect(getDeletedRes.status).toBe(404);
-    expect(getDeletedRes.body).toEqual(
+    const notFoundBody = getDeletedRes.body as ApiError;
+    expect(notFoundBody.success).toBe(false);
+    expect(notFoundBody.error).toEqual(
       expect.objectContaining({
-        error: expect.objectContaining({
-          code: 'NOT_FOUND',
-          message: 'Item not found',
-        }),
+        code: 'NOT_FOUND',
+        message: 'Item not found',
       })
     );
   });
@@ -208,17 +223,18 @@ describe('items integration (real AWS + Cognito)', () => {
       body: JSON.stringify({ name: createName }),
     });
     expect(createRes.status).toBe(201);
-    const created = createRes.body as Item;
+    const createBody = createRes.body as ApiSuccess<Item>;
+    const created = createBody.data;
     const itemId = created.id;
 
     const getAsB = await request(`/items/${itemId}`, userBToken);
     expect(getAsB.status).toBe(404);
-    expect(getAsB.body).toEqual(
+    const getAsBBody = getAsB.body as ApiError;
+    expect(getAsBBody.success).toBe(false);
+    expect(getAsBBody.error).toEqual(
       expect.objectContaining({
-        error: expect.objectContaining({
-          code: 'NOT_FOUND',
-          message: 'Item not found',
-        }),
+        code: 'NOT_FOUND',
+        message: 'Item not found',
       })
     );
 
@@ -236,7 +252,8 @@ describe('items integration (real AWS + Cognito)', () => {
 
     const getAsA = await request(`/items/${itemId}`, userAToken);
     expect(getAsA.status).toBe(200);
-    expect((getAsA.body as Item).name).toBe(createName);
+    const getAsABody = getAsA.body as ApiSuccess<Item>;
+    expect(getAsABody.data.name).toBe(createName);
 
     await request(`/items/${itemId}`, userAToken, { method: 'DELETE' });
   });
@@ -249,13 +266,13 @@ describe('items integration (real AWS + Cognito)', () => {
     });
 
     expect(invalidRes.status).toBe(400);
-    expect(invalidRes.body).toEqual(
+    const invalidBody = invalidRes.body as ApiError;
+    expect(invalidBody.success).toBe(false);
+    expect(invalidBody.error).toEqual(
       expect.objectContaining({
-        error: expect.objectContaining({
-          code: 'VALIDATION_ERROR',
-          message: 'Validation failed',
-          details: expect.any(Array),
-        }),
+        code: 'VALIDATION_ERROR',
+        message: 'Validation failed',
+        details: expect.any(Array),
       })
     );
   });
@@ -270,7 +287,7 @@ describe('items integration (real AWS + Cognito)', () => {
       body: JSON.stringify({ name: name1 }),
     });
     expect(create1.status).toBe(201);
-    const item1 = create1.body as Item;
+    const item1 = (create1.body as ApiSuccess<Item>).data;
 
     const create2 = await request('/items', userAToken, {
       method: 'POST',
@@ -278,11 +295,11 @@ describe('items integration (real AWS + Cognito)', () => {
       body: JSON.stringify({ name: name2 }),
     });
     expect(create2.status).toBe(201);
-    const item2 = create2.body as Item;
+    const item2 = (create2.body as ApiSuccess<Item>).data;
 
     const listRes = await request('/items', userAToken);
     expect(listRes.status).toBe(200);
-    const listBody = listRes.body as { items: Item[] };
+    const listBody = (listRes.body as ApiSuccess<{ items: Item[] }>).data;
     expect(Array.isArray(listBody.items)).toBe(true);
 
     const ids = listBody.items.map(i => i.id);
@@ -291,7 +308,7 @@ describe('items integration (real AWS + Cognito)', () => {
 
     const listAsB = await request('/items', userBToken);
     expect(listAsB.status).toBe(200);
-    const listBodyB = listAsB.body as { items: Item[] };
+    const listBodyB = (listAsB.body as ApiSuccess<{ items: Item[] }>).data;
     expect(listBodyB.items.map(i => i.id)).not.toContain(item1.id);
     expect(listBodyB.items.map(i => i.id)).not.toContain(item2.id);
 

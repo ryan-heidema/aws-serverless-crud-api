@@ -43,6 +43,7 @@ describe('delete handler', () => {
 
     expect(result.statusCode).toBe(404);
     const body = JSON.parse(result.body);
+    expect(body.success).toBe(false);
     expect(body.error.code).toBe('NOT_FOUND');
     expect(body.error.message).toBe('Item not found');
     expect(mockDeleteItem).not.toHaveBeenCalled();
@@ -55,6 +56,7 @@ describe('delete handler', () => {
 
     expect(result.statusCode).toBe(400);
     const body = JSON.parse(result.body);
+    expect(body.success).toBe(false);
     expect(body.error.code).toBe('INVALID_PATH_PARAMETER');
     expect(body.error.message).toMatch(/id/);
   });
@@ -71,6 +73,7 @@ describe('delete handler', () => {
 
     expect(result.statusCode).toBe(500);
     const body = JSON.parse(result.body);
+    expect(body.success).toBe(false);
     expect(body.error.code).toBe('INTERNAL_ERROR');
     expect(body.error.message).toBe('Internal server error');
   });
