@@ -46,7 +46,7 @@ describe('get handler', () => {
   });
 
   it('returns 400 when id is missing', async () => {
-    const event = buildApiEvent({ pathParameters: undefined });
+    const event = buildApiEvent({});
 
     const result: any = await handler(event, buildContext(), jest.fn());
 

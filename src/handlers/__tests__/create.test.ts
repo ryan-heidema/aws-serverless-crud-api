@@ -80,7 +80,7 @@ describe('create handler', () => {
   });
 
   it('returns 400 when body is empty', async () => {
-    const event = buildApiEvent({ body: undefined });
+    const event = buildApiEvent({});
 
     const result: any = await handler(event, buildContext(), jest.fn());
 

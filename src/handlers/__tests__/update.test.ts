@@ -59,7 +59,6 @@ describe('update handler', () => {
 
   it('returns 400 when id is missing', async () => {
     const event = buildApiEvent({
-      pathParameters: undefined,
       body: JSON.stringify({ name: 'New Name' }),
     });
 
