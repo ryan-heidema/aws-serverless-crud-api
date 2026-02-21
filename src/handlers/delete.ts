@@ -3,8 +3,9 @@ import { deleteItem, getItem } from '../lib/dynamo';
 import { InvalidPathParameterError, NotFoundError } from '../lib/errors';
 import { StrictHandler, withErrorHandling } from '../lib/handler';
 import { noContent } from '../lib/http';
+import { getRequestLogContext, log } from '../lib/logger';
 
-const deleteHandler: StrictHandler = async event => {
+const deleteHandler: StrictHandler = async (event, context) => {
   const userId = getUserId(event);
   const id = event.pathParameters?.id;
 
@@ -15,6 +16,14 @@ const deleteHandler: StrictHandler = async event => {
   if (!existingItem) throw new NotFoundError('Item not found');
 
   await deleteItem(userId, id);
+
+  const { requestId } = getRequestLogContext(event, context);
+  log('info', 'Item deleted', {
+    requestId,
+    userId,
+    action: 'item_deleted',
+    itemId: id,
+  });
 
   return noContent();
 };

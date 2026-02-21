@@ -3,11 +3,12 @@ import { getItem, updateItem } from '../lib/dynamo';
 import { InvalidPathParameterError, NotFoundError, ValidationError } from '../lib/errors';
 import { StrictHandler, withErrorHandling } from '../lib/handler';
 import { HTTP_STATUS, success } from '../lib/http';
+import { getRequestLogContext, log } from '../lib/logger';
 import { parseJsonBody } from '../lib/validation';
 import { updateItemSchema } from '../schemas/items';
 import { UpdateItemRequest } from '../types';
 
-const updateHandler: StrictHandler = async event => {
+const updateHandler: StrictHandler = async (event, context) => {
   const userId = getUserId(event);
   const id = event.pathParameters?.id;
 
@@ -23,6 +24,15 @@ const updateHandler: StrictHandler = async event => {
   const body = validation.data as UpdateItemRequest;
 
   const updatedItem = await updateItem(userId, id, body);
+
+  const { requestId } = getRequestLogContext(event, context);
+  log('info', 'Item updated', {
+    requestId,
+    userId,
+    action: 'item_updated',
+    itemId: id,
+    itemName: updatedItem.name,
+  });
 
   return success(HTTP_STATUS.OK, updatedItem);
 };
