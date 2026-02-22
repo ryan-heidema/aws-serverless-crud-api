@@ -4,6 +4,7 @@ import { InvalidPathParameterError, NotFoundError, ValidationError } from '../li
 import { StrictHandler, withErrorHandling } from '../lib/handler';
 import { HTTP_STATUS, success } from '../lib/http';
 import { getRequestLogContext, log } from '../lib/logger';
+import { recordItemMetric } from '../lib/metrics';
 import { parseJsonBody } from '../lib/validation';
 import { updateItemSchema } from '../schemas/items';
 import { UpdateItemRequest } from '../types';
@@ -33,6 +34,7 @@ const updateHandler: StrictHandler = async (event, context) => {
     itemId: id,
     itemName: updatedItem.name,
   });
+  recordItemMetric('updated');
 
   return success(HTTP_STATUS.OK, updatedItem);
 };

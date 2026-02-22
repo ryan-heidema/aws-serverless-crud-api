@@ -6,6 +6,7 @@ import { ValidationError } from '../lib/errors';
 import { StrictHandler, withErrorHandling } from '../lib/handler';
 import { HTTP_STATUS, success } from '../lib/http';
 import { getRequestLogContext, log } from '../lib/logger';
+import { recordItemMetric } from '../lib/metrics';
 import { parseJsonBody } from '../lib/validation';
 import { createItemSchema } from '../schemas/items';
 import { Item } from '../types';
@@ -36,6 +37,7 @@ const createHandler: StrictHandler = async (event, context) => {
     itemId: item.id,
     itemName: item.name,
   });
+  recordItemMetric('created');
 
   return success(HTTP_STATUS.CREATED, item);
 };

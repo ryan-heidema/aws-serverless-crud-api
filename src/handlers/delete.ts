@@ -4,6 +4,7 @@ import { InvalidPathParameterError, NotFoundError } from '../lib/errors';
 import { StrictHandler, withErrorHandling } from '../lib/handler';
 import { noContent } from '../lib/http';
 import { getRequestLogContext, log } from '../lib/logger';
+import { recordItemMetric } from '../lib/metrics';
 
 const deleteHandler: StrictHandler = async (event, context) => {
   const userId = getUserId(event);
@@ -24,6 +25,7 @@ const deleteHandler: StrictHandler = async (event, context) => {
     action: 'item_deleted',
     itemId: id,
   });
+  recordItemMetric('deleted');
 
   return noContent();
 };
