@@ -9,7 +9,7 @@ import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
-import { ItemsApiAlarms } from './items-api-alarms';
+import { ItemsApiAlarms } from './alarms';
 
 export interface InfraStackProps extends cdk.StackProps {
   envName: string;
