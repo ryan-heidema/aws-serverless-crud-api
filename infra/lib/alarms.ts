@@ -11,10 +11,13 @@ export interface ItemsApiAlarmsProps {
 }
 
 /**
- * CloudWatch alarms for the Items API (Lambda error rate & throttles, API 5xx/4xx rate, latency, composites)
- * Intended for prod only
+ * CloudWatch alarms for the Items API (Lambda error rate & throttles, API 5xx/4xx rate, latency)
+ * Severity (paging) composites: high-sev (unhealthy), low-sev (latency, 4xx)
  */
 export class ItemsApiAlarms extends Construct {
+  /** Severity (paging) alarms — high-sev and low-sev composites for dashboard alarm status widget */
+  public readonly alarms: cloudwatch.IAlarm[];
+
   constructor(scope: Construct, id: string, props: ItemsApiAlarmsProps) {
     super(scope, id);
 
@@ -131,7 +134,7 @@ export class ItemsApiAlarms extends Construct {
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
 
-    new cloudwatch.CompositeAlarm(this, 'CompositeUnhealthyHigh', {
+    const compositeHighSev = new cloudwatch.CompositeAlarm(this, 'CompositeHighSev', {
       compositeAlarmName: `${envName}-items-api-unhealthy-high`,
       alarmDescription: 'High severity: API 5xx, Lambda errors, or Lambda throttles',
       alarmRule: cloudwatch.AlarmRule.anyOf(
@@ -141,16 +144,18 @@ export class ItemsApiAlarms extends Construct {
       ),
     });
 
-    new cloudwatch.CompositeAlarm(this, 'CompositeDegradedLatencyLow', {
+    const compositeLowSevLatency = new cloudwatch.CompositeAlarm(this, 'CompositeLowSevLatency', {
       compositeAlarmName: `${envName}-items-api-degraded-latency-low`,
       alarmDescription: 'Low severity: API latency high',
       alarmRule: cloudwatch.AlarmRule.anyOf(apiLatencyAlarm),
     });
 
-    new cloudwatch.CompositeAlarm(this, 'CompositeClientErrorsLow', {
+    const compositeLowSev4xx = new cloudwatch.CompositeAlarm(this, 'CompositeLowSev4xx', {
       compositeAlarmName: `${envName}-items-api-client-errors-low`,
       alarmDescription: 'Low severity: high 4xx rate',
       alarmRule: cloudwatch.AlarmRule.anyOf(api4xxAlarm),
     });
+
+    this.alarms = [compositeHighSev, compositeLowSevLatency, compositeLowSev4xx];
   }
 }

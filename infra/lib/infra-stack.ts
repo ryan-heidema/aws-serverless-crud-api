@@ -10,6 +10,7 @@ import { Construct } from 'constructs';
 import * as path from 'path';
 
 import { ItemsApiAlarms } from './alarms';
+import { ItemsApiDashboard } from './dashboard';
 
 export interface InfraStackProps extends cdk.StackProps {
   envName: string;
@@ -170,7 +171,7 @@ export class InfraStack extends cdk.Stack {
       authorizer: jwtAuthorizer,
     });
 
-    // CloudWatch alarms (prod only)
+    // CloudWatch alarms + dashboard (prod only)
     if (isProd) {
       const itemFunctions = {
         create: createFunction,
@@ -179,10 +180,16 @@ export class InfraStack extends cdk.Stack {
         update: updateFunction,
         delete: deleteFunction,
       };
-      new ItemsApiAlarms(this, `${envName}-ItemsApiAlarms`, {
+      const alarmsConstruct = new ItemsApiAlarms(this, `${envName}-ItemsApiAlarms`, {
         envName,
         httpApi: httpApi as apigatewayv2.IHttpApi,
         functions: itemFunctions,
+      });
+      new ItemsApiDashboard(this, `${envName}-ItemsApiDashboard`, {
+        envName,
+        httpApi: httpApi as apigatewayv2.IHttpApi,
+        functions: itemFunctions,
+        alarms: alarmsConstruct.alarms,
       });
     }
 

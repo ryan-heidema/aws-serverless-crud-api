@@ -160,4 +160,13 @@ describe('InfraStack', () => {
       expect(withMetrics.length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  describe('CloudWatch dashboard', () => {
+    it('creates dashboard with env-prefixed name', () => {
+      template.resourceCountIs('AWS::CloudWatch::Dashboard', 1);
+      template.hasResourceProperties('AWS::CloudWatch::Dashboard', {
+        DashboardName: 'prod-items-api',
+      });
+    });
+  });
 });
