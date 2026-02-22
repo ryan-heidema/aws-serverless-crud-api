@@ -22,6 +22,7 @@ export class InfraStack extends cdk.Stack {
 
     const { envName } = props;
     const isProd = envName === 'prod';
+    const API_VERSION = 'v1';
 
     const removalPolicy = isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY;
 
@@ -125,7 +126,7 @@ export class InfraStack extends cdk.Stack {
 
     // Add routes (all protected by JWT)
     httpApi.addRoutes({
-      path: '/items',
+      path: `/${API_VERSION}/items`,
       methods: [apigatewayv2.HttpMethod.GET],
       integration: new integrations.HttpLambdaIntegration(
         `${envName}-ListIntegration`,
@@ -135,7 +136,7 @@ export class InfraStack extends cdk.Stack {
     });
 
     httpApi.addRoutes({
-      path: '/items',
+      path: `/${API_VERSION}/items`,
       methods: [apigatewayv2.HttpMethod.POST],
       integration: new integrations.HttpLambdaIntegration(
         `${envName}-CreateIntegration`,
@@ -145,14 +146,14 @@ export class InfraStack extends cdk.Stack {
     });
 
     httpApi.addRoutes({
-      path: '/items/{id}',
+      path: `/${API_VERSION}/items/{id}`,
       methods: [apigatewayv2.HttpMethod.GET],
       integration: new integrations.HttpLambdaIntegration(`${envName}-GetIntegration`, getFunction),
       authorizer: jwtAuthorizer,
     });
 
     httpApi.addRoutes({
-      path: '/items/{id}',
+      path: `/${API_VERSION}/items/{id}`,
       methods: [apigatewayv2.HttpMethod.PUT],
       integration: new integrations.HttpLambdaIntegration(
         `${envName}-UpdateIntegration`,
@@ -162,7 +163,7 @@ export class InfraStack extends cdk.Stack {
     });
 
     httpApi.addRoutes({
-      path: '/items/{id}',
+      path: `/${API_VERSION}/items/{id}`,
       methods: [apigatewayv2.HttpMethod.DELETE],
       integration: new integrations.HttpLambdaIntegration(
         `${envName}-DeleteIntegration`,

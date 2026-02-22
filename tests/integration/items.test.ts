@@ -121,12 +121,12 @@ describe('items integration (real AWS + Cognito)', () => {
 
   afterAll(async () => {
     if (!createdItemId) return;
-    await request(`/items/${createdItemId}`, userAToken, { method: 'DELETE' });
+    await request(`/v1/items/${createdItemId}`, userAToken, { method: 'DELETE' });
   });
 
   it('rejects unauthenticated request', async () => {
     if (!API_URL) throw new Error('API_URL is required.');
-    const response = await fetch(`${API_URL}/items`, {
+    const response = await fetch(`${API_URL}/v1/items`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'test' }),
@@ -136,7 +136,7 @@ describe('items integration (real AWS + Cognito)', () => {
 
   it('rejects invalid token', async () => {
     if (!API_URL) throw new Error('API_URL is required.');
-    const response = await fetch(`${API_URL}/items`, {
+    const response = await fetch(`${API_URL}/v1/items`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -150,7 +150,7 @@ describe('items integration (real AWS + Cognito)', () => {
   it('runs full CRUD flow against deployed API (user A)', async () => {
     const createName = `integration-${Date.now()}`;
 
-    const createRes = await request('/items', userAToken, {
+    const createRes = await request('/v1/items', userAToken, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: createName }),
@@ -169,7 +169,7 @@ describe('items integration (real AWS + Cognito)', () => {
     const created = createBody.data;
     createdItemId = created.id;
 
-    const getRes = await request(`/items/${created.id}`, userAToken);
+    const getRes = await request(`/v1/items/${created.id}`, userAToken);
     expect(getRes.status).toBe(200);
     const getBody = getRes.body as ApiSuccess<Item>;
     expect(getBody.success).toBe(true);
@@ -181,7 +181,7 @@ describe('items integration (real AWS + Cognito)', () => {
     );
 
     const updatedName = `${createName}-updated`;
-    const updateRes = await request(`/items/${created.id}`, userAToken, {
+    const updateRes = await request(`/v1/items/${created.id}`, userAToken, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: updatedName }),
@@ -197,13 +197,13 @@ describe('items integration (real AWS + Cognito)', () => {
       })
     );
 
-    const deleteRes = await request(`/items/${created.id}`, userAToken, {
+    const deleteRes = await request(`/v1/items/${created.id}`, userAToken, {
       method: 'DELETE',
     });
     expect(deleteRes.status).toBe(204);
     createdItemId = undefined;
 
-    const getDeletedRes = await request(`/items/${created.id}`, userAToken);
+    const getDeletedRes = await request(`/v1/items/${created.id}`, userAToken);
     expect(getDeletedRes.status).toBe(404);
     const notFoundBody = getDeletedRes.body as ApiError;
     expect(notFoundBody.success).toBe(false);
@@ -217,7 +217,7 @@ describe('items integration (real AWS + Cognito)', () => {
 
   it('isolation: user B cannot access user A item (GET/PUT/DELETE return 404)', async () => {
     const createName = `isolation-${Date.now()}`;
-    const createRes = await request('/items', userAToken, {
+    const createRes = await request('/v1/items', userAToken, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: createName }),
@@ -227,7 +227,7 @@ describe('items integration (real AWS + Cognito)', () => {
     const created = createBody.data;
     const itemId = created.id;
 
-    const getAsB = await request(`/items/${itemId}`, userBToken);
+    const getAsB = await request(`/v1/items/${itemId}`, userBToken);
     expect(getAsB.status).toBe(404);
     const getAsBBody = getAsB.body as ApiError;
     expect(getAsBBody.success).toBe(false);
@@ -238,28 +238,28 @@ describe('items integration (real AWS + Cognito)', () => {
       })
     );
 
-    const updateAsB = await request(`/items/${itemId}`, userBToken, {
+    const updateAsB = await request(`/v1/items/${itemId}`, userBToken, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'hacked' }),
     });
     expect(updateAsB.status).toBe(404);
 
-    const deleteAsB = await request(`/items/${itemId}`, userBToken, {
+    const deleteAsB = await request(`/v1/items/${itemId}`, userBToken, {
       method: 'DELETE',
     });
     expect(deleteAsB.status).toBe(404);
 
-    const getAsA = await request(`/items/${itemId}`, userAToken);
+    const getAsA = await request(`/v1/items/${itemId}`, userAToken);
     expect(getAsA.status).toBe(200);
     const getAsABody = getAsA.body as ApiSuccess<Item>;
     expect(getAsABody.data.name).toBe(createName);
 
-    await request(`/items/${itemId}`, userAToken, { method: 'DELETE' });
+    await request(`/v1/items/${itemId}`, userAToken, { method: 'DELETE' });
   });
 
   it('returns standardized validation error for invalid create request', async () => {
-    const invalidRes = await request('/items', userAToken, {
+    const invalidRes = await request('/v1/items', userAToken, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
@@ -277,11 +277,11 @@ describe('items integration (real AWS + Cognito)', () => {
     );
   });
 
-  it('GET /items returns only the authenticated user items', async () => {
+  it('GET /v1/items returns only the authenticated user items', async () => {
     const name1 = `list-a-${Date.now()}-1`;
     const name2 = `list-a-${Date.now()}-2`;
 
-    const create1 = await request('/items', userAToken, {
+    const create1 = await request('/v1/items', userAToken, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name1 }),
@@ -289,7 +289,7 @@ describe('items integration (real AWS + Cognito)', () => {
     expect(create1.status).toBe(201);
     const item1 = (create1.body as ApiSuccess<Item>).data;
 
-    const create2 = await request('/items', userAToken, {
+    const create2 = await request('/v1/items', userAToken, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name2 }),
@@ -297,7 +297,7 @@ describe('items integration (real AWS + Cognito)', () => {
     expect(create2.status).toBe(201);
     const item2 = (create2.body as ApiSuccess<Item>).data;
 
-    const listRes = await request('/items', userAToken);
+    const listRes = await request('/v1/items', userAToken);
     expect(listRes.status).toBe(200);
     const listBody = (listRes.body as ApiSuccess<{ items: Item[] }>).data;
     expect(Array.isArray(listBody.items)).toBe(true);
@@ -306,13 +306,13 @@ describe('items integration (real AWS + Cognito)', () => {
     expect(ids).toContain(item1.id);
     expect(ids).toContain(item2.id);
 
-    const listAsB = await request('/items', userBToken);
+    const listAsB = await request('/v1/items', userBToken);
     expect(listAsB.status).toBe(200);
     const listBodyB = (listAsB.body as ApiSuccess<{ items: Item[] }>).data;
     expect(listBodyB.items.map(i => i.id)).not.toContain(item1.id);
     expect(listBodyB.items.map(i => i.id)).not.toContain(item2.id);
 
-    await request(`/items/${item1.id}`, userAToken, { method: 'DELETE' });
-    await request(`/items/${item2.id}`, userAToken, { method: 'DELETE' });
+    await request(`/v1/items/${item1.id}`, userAToken, { method: 'DELETE' });
+    await request(`/v1/items/${item2.id}`, userAToken, { method: 'DELETE' });
   });
 });

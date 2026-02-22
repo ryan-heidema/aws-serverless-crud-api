@@ -59,25 +59,22 @@ describe('InfraStack', () => {
 
   it('creates API routes for all CRUD operations', () => {
     template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
-      RouteKey: 'GET /items',
+      RouteKey: 'GET /v1/items',
     });
     template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
-      RouteKey: 'POST /items',
-    });
-
-    // Check for GET /items/{id}
-    template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
-      RouteKey: 'GET /items/{id}',
+      RouteKey: 'POST /v1/items',
     });
 
-    // Check for PUT /items/{id}
     template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
-      RouteKey: 'PUT /items/{id}',
+      RouteKey: 'GET /v1/items/{id}',
     });
 
-    // Check for DELETE /items/{id}
     template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
-      RouteKey: 'DELETE /items/{id}',
+      RouteKey: 'PUT /v1/items/{id}',
+    });
+
+    template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
+      RouteKey: 'DELETE /v1/items/{id}',
     });
   });
 
