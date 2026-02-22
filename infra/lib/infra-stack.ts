@@ -9,6 +9,8 @@ import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
+import { ItemsApiAlarms } from './items-api-alarms';
+
 export interface InfraStackProps extends cdk.StackProps {
   envName: string;
 }
@@ -167,6 +169,22 @@ export class InfraStack extends cdk.Stack {
       ),
       authorizer: jwtAuthorizer,
     });
+
+    // CloudWatch alarms (prod only)
+    if (isProd) {
+      const itemFunctions = {
+        create: createFunction,
+        list: listFunction,
+        get: getFunction,
+        update: updateFunction,
+        delete: deleteFunction,
+      };
+      new ItemsApiAlarms(this, `${envName}-ItemsApiAlarms`, {
+        envName,
+        httpApi: httpApi as apigatewayv2.IHttpApi,
+        functions: itemFunctions,
+      });
+    }
 
     // Outputs (export names allow targeting a specific env's outputs)
     new cdk.CfnOutput(this, 'ApiUrl', {

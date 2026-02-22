@@ -9,7 +9,7 @@ describe('InfraStack', () => {
   beforeAll(() => {
     const app = new cdk.App();
     const stack = new InfraStack(app, 'TestStack', {
-      envName: 'dev',
+      envName: 'prod',
       env: {
         account: '123456789012',
         region: 'us-east-1',
@@ -21,7 +21,7 @@ describe('InfraStack', () => {
   it('creates a DynamoDB table with env prefix', () => {
     template.hasResourceProperties('AWS::DynamoDB::Table', {
       BillingMode: 'PAY_PER_REQUEST',
-      TableName: 'dev-items',
+      TableName: 'prod-items',
       KeySchema: [
         { AttributeName: 'userId', KeyType: 'HASH' },
         { AttributeName: 'id', KeyType: 'RANGE' },
@@ -52,8 +52,8 @@ describe('InfraStack', () => {
   it('creates an API Gateway HTTP API with env prefix', () => {
     template.hasResourceProperties('AWS::ApiGatewayV2::Api', {
       ProtocolType: 'HTTP',
-      Name: 'dev-items-api',
-      Description: 'CRUD API for Items (dev)',
+      Name: 'prod-items-api',
+      Description: 'CRUD API for Items (prod)',
     });
   });
 
@@ -105,7 +105,7 @@ describe('InfraStack', () => {
   it('creates Cognito User Pool and App Client with env prefix', () => {
     template.resourceCountIs('AWS::Cognito::UserPool', 1);
     template.hasResourceProperties('AWS::Cognito::UserPool', {
-      UserPoolName: 'dev-items-user-pool',
+      UserPoolName: 'prod-items-user-pool',
     });
     template.resourceCountIs('AWS::Cognito::UserPoolClient', 1);
   });
@@ -118,20 +118,46 @@ describe('InfraStack', () => {
 
   it('outputs API URL, table name, and Cognito IDs with env export names', () => {
     template.hasOutput('ApiUrl', {
-      Description: 'HTTP API endpoint URL (dev)',
-      Export: { Name: 'dev-ApiUrl' },
+      Description: 'HTTP API endpoint URL (prod)',
+      Export: { Name: 'prod-ApiUrl' },
     });
     template.hasOutput('TableName', {
-      Description: 'DynamoDB table name (dev)',
-      Export: { Name: 'dev-TableName' },
+      Description: 'DynamoDB table name (prod)',
+      Export: { Name: 'prod-TableName' },
     });
     template.hasOutput('UserPoolId', {
-      Description: 'Cognito User Pool ID (dev)',
-      Export: { Name: 'dev-UserPoolId' },
+      Description: 'Cognito User Pool ID (prod)',
+      Export: { Name: 'prod-UserPoolId' },
     });
     template.hasOutput('UserPoolClientId', {
-      Description: 'Cognito App Client ID (dev)',
-      Export: { Name: 'dev-UserPoolClientId' },
+      Description: 'Cognito App Client ID (prod)',
+      Export: { Name: 'prod-UserPoolClientId' },
+    });
+  });
+
+  describe('CloudWatch alarms', () => {
+    it('creates the expected number of alarms', () => {
+      template.resourceCountIs('AWS::CloudWatch::Alarm', 13);
+    });
+
+    it('creates the expected number of composite alarms', () => {
+      template.resourceCountIs('AWS::CloudWatch::CompositeAlarm', 3);
+    });
+
+    it('uses 5% threshold for at least one error-rate alarm', () => {
+      const alarms = template.findResources('AWS::CloudWatch::Alarm');
+      const withThreshold = Object.values(alarms).filter(
+        (r: any) => r.Properties?.Threshold === 0.05
+      );
+      expect(withThreshold.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('uses metric math for at least one alarm', () => {
+      const alarms = template.findResources('AWS::CloudWatch::Alarm');
+      const withMetrics = Object.values(alarms).filter(
+        (r: any) => Array.isArray(r.Properties?.Metrics) && r.Properties.Metrics.length > 0
+      );
+      expect(withMetrics.length).toBeGreaterThanOrEqual(1);
     });
   });
 });
