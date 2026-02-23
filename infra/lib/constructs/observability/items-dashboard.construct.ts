@@ -16,9 +16,7 @@ const PERIOD = cdk.Duration.minutes(5);
 const RED = '#ff0000';
 const ORANGE_RED = '#e74c3c';
 
-/**
- * CloudWatch dashboard for the Items API
- */
+/** CloudWatch dashboard for the Items API */
 export class ItemsApiDashboard extends Construct {
   constructor(scope: Construct, id: string, props: ItemsApiDashboardProps) {
     super(scope, id);

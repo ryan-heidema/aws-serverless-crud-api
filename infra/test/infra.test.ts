@@ -1,14 +1,14 @@
 import * as cdk from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 
-import { InfraStack } from '../lib/infra-stack';
+import { ItemsApiStack } from '../lib/stacks/items-api.stack';
 
-describe('InfraStack', () => {
+describe('ItemsApiStack', () => {
   let template: Template;
 
   beforeAll(() => {
     const app = new cdk.App();
-    const stack = new InfraStack(app, 'TestStack', {
+    const stack = new ItemsApiStack(app, 'TestStack', {
       envName: 'prod',
       env: {
         account: '123456789012',
