@@ -57,6 +57,15 @@ describe('InfraStack', () => {
     });
   });
 
+  it('configures stage throttling (rate + burst)', () => {
+    template.hasResourceProperties('AWS::ApiGatewayV2::Stage', {
+      DefaultRouteSettings: {
+        ThrottlingBurstLimit: 50,
+        ThrottlingRateLimit: 25,
+      },
+    });
+  });
+
   it('creates API routes for all CRUD operations', () => {
     template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
       RouteKey: 'GET /v1/items',

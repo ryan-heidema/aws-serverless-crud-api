@@ -22,7 +22,11 @@ export class InfraStack extends cdk.Stack {
 
     const { envName } = props;
     const isProd = envName === 'prod';
+
+    // API and rate-limit config
     const API_VERSION = 'v1';
+    const THROTTLE_RATE_LIMIT = isProd ? 25 : 10; // requests per second
+    const THROTTLE_BURST_LIMIT = isProd ? 50 : 20;
 
     const removalPolicy = isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY;
 
@@ -117,7 +121,14 @@ export class InfraStack extends cdk.Stack {
     const httpApi = new apigatewayv2.HttpApi(this, `${envName}-HttpApi`, {
       apiName: `${envName}-items-api`,
       description: `CRUD API for Items (${envName})`,
+      createDefaultStage: true,
     });
+
+    const defaultStage = httpApi.defaultStage!.node.defaultChild as apigatewayv2.CfnStage;
+    defaultStage.defaultRouteSettings = {
+      throttlingBurstLimit: THROTTLE_BURST_LIMIT,
+      throttlingRateLimit: THROTTLE_RATE_LIMIT,
+    };
 
     const issuerUrl = `https://cognito-idp.${this.region}.amazonaws.com/${userPool.userPoolId}`;
     const jwtAuthorizer = new authorizers.HttpJwtAuthorizer(`${envName}-JwtAuthorizer`, issuerUrl, {
