@@ -6,12 +6,9 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "build": "tsc -p tsconfig.build.json",
-    "build:watch": "tsc -p tsconfig.build.json --watch",
     "clean": "rm -rf dist",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:integration": "NODE_OPTIONS='--experimental-vm-modules' jest --config jest.integration.config.js --runInBand"
+    "test": "jest --selectProjects unit",
+    "test:integration": "NODE_OPTIONS='--experimental-vm-modules' jest --selectProjects integration --runInBand"
   },
   "dependencies": {
     "@aws-lambda-powertools/metrics": "^2.31.0",
@@ -38,6 +35,7 @@
     "jest": "^30",
     "jiti": "^2.6.1",
     "ts-jest": "^29",
+    "ts-node": "^10.9.2",
     "typescript": "~5.9.3"
   }
 }
