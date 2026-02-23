@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: .
+
+jobs:
+  lint-test-synth:
+    name: Lint, test, and CDK synth
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies (root)
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests (app)
+        run: npm run test
+
+      - name: Install infra dependencies
+        run: cd infra && npm ci
+
+      - name: Unit tests (infra)
+        run: cd infra && npm run test
+
+      - name: CDK synth
+        run: cd infra && npx cdk synth -c env=dev
