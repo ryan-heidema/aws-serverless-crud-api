@@ -1,5 +1,6 @@
 import { buildApiEvent, buildContext } from '../../__tests__/utils/api-event';
 import { getItem, updateItem } from '../../lib/dynamo';
+import { ITEM_NAME_MAX_LENGTH } from '../../schemas/items';
 import { Item } from '../../types';
 import { handler } from '../update';
 
@@ -90,6 +91,51 @@ describe('update handler', () => {
     expect(body.success).toBe(false);
     expect(body.error.code).toBe('VALIDATION_ERROR');
     expect(mockUpdateItem).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when name exceeds max length', async () => {
+    mockGetItem.mockResolvedValue(EXISTING_ITEM);
+    const longName = 'x'.repeat(ITEM_NAME_MAX_LENGTH + 1);
+    const event = buildApiEvent({
+      pathParameters: { id: 'abc-123' },
+      body: JSON.stringify({ name: longName }),
+    });
+
+    const result: any = await handler(event, buildContext(), jest.fn());
+
+    expect(result.statusCode).toBe(400);
+    const body = JSON.parse(result.body);
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: 'name',
+          message: `name must be at most ${ITEM_NAME_MAX_LENGTH} characters`,
+        }),
+      ])
+    );
+    expect(mockUpdateItem).not.toHaveBeenCalled();
+  });
+
+  it('sanitizes control characters from name and updates with cleaned value', async () => {
+    mockGetItem.mockResolvedValue(EXISTING_ITEM);
+    mockUpdateItem.mockResolvedValue({
+      ...EXISTING_ITEM,
+      name: 'CleanName',
+      updatedAt: '2024-06-01T00:00:00.000Z',
+    });
+    const event = buildApiEvent({
+      pathParameters: { id: 'abc-123' },
+      body: JSON.stringify({ name: 'Clean\x00Name\x7F' }),
+    });
+
+    const result: any = await handler(event, buildContext(), jest.fn());
+
+    expect(result.statusCode).toBe(200);
+    expect(mockUpdateItem).toHaveBeenCalledWith('test-user-id', 'abc-123', {
+      name: 'CleanName',
+    });
   });
 
   it('returns 500 when DynamoDB throws', async () => {

@@ -1,5 +1,6 @@
 import { buildApiEvent, buildContext } from '../../__tests__/utils/api-event';
 import { putItem } from '../../lib/dynamo';
+import { ITEM_NAME_MAX_LENGTH } from '../../schemas/items';
 import { handler } from '../create';
 
 jest.mock('../../lib/dynamo');
@@ -94,6 +95,42 @@ describe('create handler', () => {
     expect(body.success).toBe(false);
     expect(body.error.code).toBe('VALIDATION_ERROR');
     expect(mockPutItem).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when name exceeds max length', async () => {
+    const longName = 'x'.repeat(ITEM_NAME_MAX_LENGTH + 1);
+    const event = buildApiEvent({
+      body: JSON.stringify({ name: longName }),
+    });
+
+    const result: any = await handler(event, buildContext(), jest.fn());
+
+    expect(result.statusCode).toBe(400);
+    const body = JSON.parse(result.body);
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: 'name',
+          message: `name must be at most ${ITEM_NAME_MAX_LENGTH} characters`,
+        }),
+      ])
+    );
+    expect(mockPutItem).not.toHaveBeenCalled();
+  });
+
+  it('sanitizes control characters from name and stores cleaned value', async () => {
+    const event = buildApiEvent({
+      body: JSON.stringify({ name: 'Test\x00Item\x07\u001F' }),
+    });
+
+    const result: any = await handler(event, buildContext(), jest.fn());
+
+    expect(result.statusCode).toBe(201);
+    const body = JSON.parse(result.body);
+    expect(body.data.name).toBe('TestItem');
+    expect(mockPutItem).toHaveBeenCalledWith(expect.objectContaining({ name: 'TestItem' }));
   });
 
   it('returns 500 when DynamoDB throws', async () => {
