@@ -213,7 +213,9 @@ describe('items integration (real AWS + Cognito)', () => {
         message: 'Item not found',
       })
     );
-  });
+    },
+    20000
+  ); // Allow for Lambda cold start in CI
 
   it('isolation: user B cannot access user A item (GET/PUT/DELETE return 404)', async () => {
     const createName = `isolation-${Date.now()}`;
