@@ -1,0 +1,175 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: us-east-1
+  NODE_VERSION: "20"
+
+jobs:
+  deploy-dev:
+    name: Deploy dev
+    runs-on: ubuntu-latest
+    environment: dev
+    outputs:
+      api_url: ${{ steps.stack-outputs.outputs.api_url }}
+      cognito_user_pool_id: ${{ steps.stack-outputs.outputs.cognito_user_pool_id }}
+      cognito_client_id: ${{ steps.stack-outputs.outputs.cognito_client_id }}
+      aws_region: ${{ steps.stack-outputs.outputs.aws_region }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd infra && npm ci
+
+      - name: Deploy InfraStack-dev
+        run: cd infra && npx cdk deploy InfraStack-dev -c env=dev --require-approval never --outputs-file cdk-outputs.json
+
+      - name: Read stack outputs
+        id: stack-outputs
+        run: |
+          API_URL=$(jq -r '."InfraStack-dev".ApiUrl' infra/cdk-outputs.json)
+          USER_POOL_ID=$(jq -r '."InfraStack-dev".UserPoolId' infra/cdk-outputs.json)
+          CLIENT_ID=$(jq -r '."InfraStack-dev".UserPoolClientId' infra/cdk-outputs.json)
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_id=$USER_POOL_ID" >> $GITHUB_OUTPUT
+          echo "cognito_client_id=$CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "aws_region=${{ env.AWS_REGION }}" >> $GITHUB_OUTPUT
+
+  integration-dev:
+    name: Integration tests (dev)
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    environment: dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ needs.deploy-dev.outputs.aws_region }}
+
+      - name: Setup Node and install
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+
+      - name: Run integration tests
+        env:
+          API_URL: ${{ needs.deploy-dev.outputs.api_url }}
+          COGNITO_USER_POOL_ID: ${{ needs.deploy-dev.outputs.cognito_user_pool_id }}
+          COGNITO_CLIENT_ID: ${{ needs.deploy-dev.outputs.cognito_client_id }}
+          AWS_REGION: ${{ needs.deploy-dev.outputs.aws_region }}
+        run: npm run test:integration
+
+  deploy-staging:
+    name: Deploy staging
+    runs-on: ubuntu-latest
+    needs: integration-dev
+    environment: staging
+    outputs:
+      api_url: ${{ steps.stack-outputs.outputs.api_url }}
+      cognito_user_pool_id: ${{ steps.stack-outputs.outputs.cognito_user_pool_id }}
+      cognito_client_id: ${{ steps.stack-outputs.outputs.cognito_client_id }}
+      aws_region: ${{ steps.stack-outputs.outputs.aws_region }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd infra && npm ci
+
+      - name: Deploy InfraStack-staging
+        run: cd infra && npx cdk deploy InfraStack-staging -c env=staging --require-approval never --outputs-file cdk-outputs.json
+
+      - name: Read stack outputs
+        id: stack-outputs
+        run: |
+          API_URL=$(jq -r '."InfraStack-staging".ApiUrl' infra/cdk-outputs.json)
+          USER_POOL_ID=$(jq -r '."InfraStack-staging".UserPoolId' infra/cdk-outputs.json)
+          CLIENT_ID=$(jq -r '."InfraStack-staging".UserPoolClientId' infra/cdk-outputs.json)
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_id=$USER_POOL_ID" >> $GITHUB_OUTPUT
+          echo "cognito_client_id=$CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "aws_region=${{ env.AWS_REGION }}" >> $GITHUB_OUTPUT
+
+  integration-staging:
+    name: Integration tests (staging)
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ needs.deploy-staging.outputs.aws_region }}
+
+      - name: Setup Node and install
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+
+      - name: Run integration tests
+        env:
+          API_URL: ${{ needs.deploy-staging.outputs.api_url }}
+          COGNITO_USER_POOL_ID: ${{ needs.deploy-staging.outputs.cognito_user_pool_id }}
+          COGNITO_CLIENT_ID: ${{ needs.deploy-staging.outputs.cognito_client_id }}
+          AWS_REGION: ${{ needs.deploy-staging.outputs.aws_region }}
+        run: npm run test:integration
+
+  deploy-prod:
+    name: Deploy prod
+    runs-on: ubuntu-latest
+    needs: integration-staging
+    environment: prod
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd infra && npm ci
+
+      - name: Deploy InfraStack-prod
+        run: cd infra && npx cdk deploy InfraStack-prod -c env=prod --require-approval never
