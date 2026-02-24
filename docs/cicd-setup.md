@@ -255,7 +255,7 @@ The deploy workflow uses `secrets.AWS_ROLE_ARN` in each job; GitHub supplies the
 ## 5. Verify
 
 - **CI** (`.github/workflows/ci.yml`): Runs on pull requests; no AWS or secrets required.
-- **Deploy** (`.github/workflows/deploy.yml`): Runs on push to `main`. It will:
+- **Deploy** (`.github/workflows/cd.yml`): Runs on push to `main`. It will:
   1. Deploy to **dev** (job uses `environment: dev` and `secrets.AWS_ROLE_ARN`).
   2. Run integration tests against dev.
   3. Wait for approval, then deploy to **staging** (job uses `environment: staging` and `secrets.AWS_ROLE_ARN`).

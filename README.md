@@ -38,7 +38,8 @@ Items are multi-tenant: each record includes a `userId` (from the JWT) so users 
 │   └── lib/            # API, Lambda, DynamoDB, Cognito, alarms, dashboard
 ├── tests/              # Integration tests (CRUD + auth)
 └── docs/
-    └── cicd-setup.md   # Manual steps for GitHub Actions → AWS (OIDC, IAM, envs)
+    ├── cicd-setup.md   # Manual steps for GitHub Actions → AWS (OIDC, IAM, envs)
+    └── openapi.yaml    # OpenAPI 3 spec for the API
 ```
 
 ## Build and test
@@ -73,4 +74,10 @@ npx cdk deploy -c env=dev
 
 Use `-c env=staging` or `-c env=prod` for other stages. CDK uses `NodejsFunction` and bundles from `src/` automatically. After deploy, the stack outputs include the API URL and Cognito User Pool / Client ID—use them to fill [.env.integration.example](.env.integration.example) (copy to `.env.integration`) and run integration tests.
 
-For **CI/CD** (GitHub Actions → dev/staging/prod with OIDC and approval gates), see [docs/cicd-setup.md](docs/cicd-setup.md).
+## CI/CD
+
+GitHub Actions run on every PR (unit + CDK tests) and on push to `main` (deploy pipeline). The deploy workflow uses **OIDC** to assume AWS roles—no long-lived keys—and deploys to **dev** → **staging** → **prod** with approval gates for staging and prod. After each deploy it runs integration tests against that environment. One-time setup (OIDC provider, IAM roles, GitHub Environments, environment secrets) is documented in [docs/cicd-setup.md](docs/cicd-setup.md).
+
+## License
+
+[MIT](LICENSE)
