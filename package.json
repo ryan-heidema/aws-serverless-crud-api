@@ -1,5 +1,5 @@
 {
-  "name": "aws-crud-api",
+  "name": "aws-serverless-crud-api",
   "version": "0.1.0",
   "description": "Serverless CRUD API with Lambda, API Gateway, DynamoDB, and Cognito",
   "scripts": {
