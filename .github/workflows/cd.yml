@@ -9,6 +9,10 @@ concurrency:
   group: deploy
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   AWS_REGION: us-east-1
   NODE_VERSION: "20"
